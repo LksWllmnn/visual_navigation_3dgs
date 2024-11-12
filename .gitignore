@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 data/
 chkpt/
+chkpts/
 segment-anything/
 output_masks/
 
