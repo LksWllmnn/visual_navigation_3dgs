@@ -1,19 +1,17 @@
 import os
 import cv2
-import matplotlib.pyplot as plt
 import numpy as np
-import time
-from segment_anything import SamPredictor, sam_model_registry, SamAutomaticMaskGenerator
 import torch
 from torchvision import transforms, models
 import torch.nn.functional as F
 from PIL import Image
+from segment_anything import SamPredictor, sam_model_registry, SamAutomaticMaskGenerator
 
 def save_anns(anns, image, output_path, mask_color=[255, 0, 0], transparency=90):
     if len(anns) == 0:
         return
     
-    # Erstelle Kopie des Originalbilds für Maskenüberlagerung
+    # Kopie des Originalbilds für Maskenüberlagerung
     image_with_mask = image.copy()
     
     for ann in anns:
@@ -62,35 +60,53 @@ def classify_images(model, label_mapping, images, target_class, confidence_thres
     
     return valid_images, valid_masks
 
-def process_folder(image_folder, output_folder, mask_generator, model, label_mapping, target_class, confidence_threshold=20):
+def process_single_image(image_path, output_folder, mask_generator, model, label_mapping, target_class, confidence_threshold=20):
     os.makedirs(output_folder, exist_ok=True)
 
-    for filename in os.listdir(image_folder):
-        image_path = os.path.join(image_folder, filename)
-        image = cv2.imread(image_path)
-        if image is None:
-            print(f"Could not load image {image_path}, skipping...")
-            continue
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    image = cv2.imread(image_path)
+    if image is None:
+        print(f"Could not load image {image_path}.")
+        return
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    
+    # Masken generieren
+    masks = mask_generator.generate(image)
+    
+    # Ordner für Masken und maskierte Bilder
+    masks_output_path = os.path.join(output_folder, "masks")
+    mask_images_output_path = os.path.join(output_folder, "mask_images")
+    os.makedirs(masks_output_path, exist_ok=True)
+    os.makedirs(mask_images_output_path, exist_ok=True)
+    
+    mask_images = []
+    for idx, mask in enumerate(masks):
+        # Speichere Maske als PNG
+        mask_output_file = os.path.join(masks_output_path, f"mask_{idx}.png")
+        mask_array = (mask['segmentation'] * 255).astype(np.uint8)
+        cv2.imwrite(mask_output_file, mask_array)
         
-        masks = mask_generator.generate(image)
-        mask_images = [cv2.bitwise_and(image, image, mask=mask['segmentation'].astype(np.uint8)) for mask in masks]
-
-        valid_images, valid_mask_indices = classify_images(
-            model=model, label_mapping=label_mapping, images=mask_images, target_class=target_class, confidence_threshold=confidence_threshold
-        )
-        output_path = os.path.join(output_folder, filename.replace(".jpg", "_m.jpg"))
-
-        if valid_images:
-            #output_path = os.path.join(output_folder, filename.replace(".jpg", "_m.jpg"))
-            valid_masks = [masks[i] for i in valid_mask_indices]
-            save_anns(valid_masks, image, output_path)
-            print(f"Saved marked image to {output_path}")
-        else:
-            cv2.imwrite(output_path, cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
-            print(f"No valid masks for class '{target_class}' in image: {image_path}")
-
-# Initialisierung des Modells und Maskengenerators (wie im Originalcode)
+        # Erstelle und speichere maskiertes Bild
+        mask_image = cv2.bitwise_and(image, image, mask=mask['segmentation'].astype(np.uint8))
+        mask_images.append(mask_image)
+        mask_image_output_file = os.path.join(mask_images_output_path, f"mask_image_{idx}.jpg")
+        cv2.imwrite(mask_image_output_file, cv2.cvtColor(mask_image, cv2.COLOR_RGB2BGR))
+    
+    # Gültige Masken basierend auf Klassifikation finden
+    valid_images, valid_mask_indices = classify_images(
+        model=model, label_mapping=label_mapping, images=mask_images, target_class=target_class, confidence_threshold=confidence_threshold
+    )
+    
+    # Bild mit gültigen Masken speichern
+    output_image_path = os.path.join(output_folder, "output_image_with_masks.jpg")
+    if valid_images:
+        valid_masks = [masks[i] for i in valid_mask_indices]
+        save_anns(valid_masks, image, output_image_path)
+        print(f"Saved marked image to {output_image_path}")
+    else:
+        cv2.imwrite(output_image_path, cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
+        print(f"No valid masks for class '{target_class}' in image: {image_path}")
+        
+# Initialisierung des Modells und Maskengenerators
 device = "cuda"
 sam = sam_model_registry["vit_h"](checkpoint="chkpts\\sam_vit_h_4b8939.pth")
 sam.to(device=device)
@@ -113,7 +129,7 @@ label_mapping = {
 }
 
 if __name__ == "__main__":
-    image_folder = "D:\\Thesis\data\\gsplat_vid_images"
-    output_folder = "D:\\Thesis\\data\\resnet_gsplat_testFolder"
-    target_class = "I-Building"
-    process_folder(image_folder, output_folder, mask_generator, model, label_mapping, target_class)
+    image_path = "D:\\Thesis\\data\\gsplat_vid_images\\00002.jpg"
+    output_folder = "D:\\Thesis\\data\\resnet_gsplat_testFolder\\example_output"
+    target_class = "B-Building"
+    process_single_image(image_path, output_folder, mask_generator, model, label_mapping, target_class)
