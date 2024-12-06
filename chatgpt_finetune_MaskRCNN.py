@@ -1,4 +1,6 @@
+from collections import defaultdict
 import os
+import random
 import numpy as np
 import torch
 import torch.utils.data
@@ -10,6 +12,7 @@ from torchvision.models.detection.mask_rcnn import MaskRCNNPredictor
 from tqdm import tqdm  # Fortschrittsbalken hinzufügen
 import matplotlib.pyplot as plt
 from torchvision.transforms import functional as F
+import json
 # from torchvision.models.detection.coco_eval import CocoEvaluator
 # from torchvision.models.detection.coco_utils import get_coco_api_from_dataset
 
@@ -33,82 +36,87 @@ COLOR_TO_ID = {
     #(255, 169, 0, 255): 15,  # Other
 }
 
-class BuildingSegmentationDataset(torch.utils.data.Dataset):
-    def __init__(self, root, transforms=None):
+class BuildingSegmentationDataset:
+    def __init__(self, root, transforms=None, num_images_per_building=3000):
         self.root = root
         self.transforms = transforms
+        self.num_images_per_building = num_images_per_building
 
-        # Liste aller Sequenzen abrufen
-        self.sequences = sorted(os.listdir(root))
+        # Liste aller Gebäude abrufen
+        self.buildings = sorted(os.listdir(root))
         self.imgs = []
         self.masks = []
 
         print("Lade Sequenzen...")
-        # Durch alle Sequenzen iterieren und Bilder/Masks sammeln
-        for seq in tqdm(self.sequences, desc="Fortschritt", unit="seq"):
-            seq_path = os.path.join(root, seq)
-            img_file = os.path.join(seq_path, "step0.camera.png")
-            mask_file = os.path.join(seq_path, "step0.camera.semantic segmentation.png")
-            if os.path.exists(img_file) and os.path.exists(mask_file):
-                self.imgs.append(img_file)
-                self.masks.append(mask_file)
 
-    # def __getitem__(self, idx):
-    #     # Load image and mask
-    #     img_path = self.imgs[idx]
-    #     mask_path = self.masks[idx]
-    #     img = Image.open(img_path).convert("RGB")
-    #     mask = Image.open(mask_path).convert("RGBA")
+        # Durch alle Gebäude iterieren
+        for building in tqdm(self.buildings, desc="Fortschritt", unit="building"):
+            building_path = os.path.join(root, building)
+            if os.path.isdir(building_path):
+                # Liste der Sequenzen des Gebäudes
+                sequence_folders = os.listdir(building_path)
 
-    #     # Convert mask to class IDs
-    #     mask_np = np.array(mask)
-    #     instance_mask = np.zeros(mask_np.shape[:2], dtype=np.int64)
-    #     for color, class_id in COLOR_TO_ID.items():
-    #         instance_mask[np.all(mask_np == np.array(color), axis=-1)] = class_id
+                building_images = []
+                building_masks = []
 
-    #     # Get unique class IDs and generate binary masks
-    #     obj_ids = np.unique(instance_mask)
-    #     obj_ids = obj_ids[obj_ids > 0]  # Exclude background (0)
-    #     if len(obj_ids) == 0:
-    #         # Keine Objekte, setze ein leeres Bounding-Box und Labels
-    #         boxes = torch.zeros((0, 4), dtype=torch.float32)
-    #         labels = torch.zeros(0, dtype=torch.int64)
-    #         masks = torch.zeros((0, instance_mask.shape[0], instance_mask.shape[1]), dtype=torch.uint8)
-    #     else:
-    #         # Normale Verarbeitung
-    #         masks = instance_mask == obj_ids[:, None, None]
-    #         boxes = []
-    #         for i in range(len(obj_ids)):
-    #             pos = np.where(masks[i])
-    #             xmin = np.min(pos[1])
-    #             xmax = np.max(pos[1])
-    #             ymin = np.min(pos[0])
-    #             ymax = np.max(pos[0])
-    #             boxes.append([xmin, ymin, xmax, ymax])
-    #         boxes = torch.as_tensor(boxes, dtype=torch.float32)
-    #         labels = torch.as_tensor(obj_ids, dtype=torch.int64)
-    #         masks = torch.as_tensor(masks, dtype=torch.uint8)
+                for sequence_folder in sequence_folders:
+                    # Wenn die Sequenz ein Ordner ist, gehen wir weiter
+                    sequence_path = os.path.join(building_path, sequence_folder)
+                    print(sequence_path)
+                    if os.path.isdir(sequence_path):
+                        # Direkt die Bild- und Maskenpfade definieren
+                        img_file = os.path.join(sequence_path, "step0.camera.png")
+                        mask_file = os.path.join(sequence_path, "step0.camera.semantic segmentation.png")
+                        
+                        print(f"Bildpfad: {img_file}")
+                        print(f"Maskenpfad: {mask_file}")
+                        
+                        # Überprüfen, ob beide Dateien existieren
+                        if os.path.exists(img_file) and os.path.exists(mask_file):
+                            # Instanzen aus der JSON-Maske zählen
+                            instance_counts = self.count_instances_in_json(mask_file)
+                            
+                            # Nur Bilder mit Instanzen hinzufügen
+                            if instance_counts:
+                                building_images.append(img_file)
+                                building_masks.append(mask_file)
 
-    #     image_id = torch.tensor([idx])
-    #     if len(boxes) > 0:
-    #         area = (boxes[:, 3] - boxes[:, 1]) * (boxes[:, 2] - boxes[:, 0])
-    #     else:
-    #         area = torch.tensor([0.0])  # Falls keine Boxen existieren, setze area auf 0
-    #     iscrowd = torch.zeros((len(obj_ids),), dtype=torch.int64)
+                # Wenn für ein Gebäude Bilder mit Instanzen gesammelt wurden
+                if building_images:
+                    self.imgs.extend(building_images)
+                    self.masks.extend(building_masks)
 
-    #     target = {
-    #         "boxes": boxes,
-    #         "labels": labels,
-    #         "masks": masks,
-    #         "image_id": image_id,
-    #         "area": area,
-    #         "iscrowd": iscrowd,
-    #     }
+                # Sicherstellen, dass wir nur eine bestimmte Anzahl von Bildern pro Gebäude haben
+                if len(building_images) > self.num_images_per_building:
+                    indices = random.sample(range(len(building_images)), self.num_images_per_building)
+                    building_images = [building_images[i] for i in indices]
+                    building_masks = [building_masks[i] for i in indices]
 
-    #     if self.transforms is not None:
-    #         img = self.transforms(img)
+                self.imgs.extend(building_images)
+                self.masks.extend(building_masks)
+                
+    def count_instances_in_json(self, json_file):
+        instance_counts = defaultdict(int)
+        try:
+            with open(json_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
 
-    #     return img, target
+            if "captures" in data:
+                for capture in data["captures"]:
+                    if "annotations" in capture:
+                        for annotation in capture["annotations"]:
+                            if annotation.get("@type") == "type.unity.com/unity.solo.SemanticSegmentationAnnotation":
+                                instances = annotation.get("instances", [])
+                                if instances:
+                                    for instance in instances:
+                                        label_name = instance.get("labelName")
+                                        if label_name:
+                                            instance_counts[label_name] += 1
+        except (json.JSONDecodeError, UnicodeDecodeError) as e:
+            print(f"Fehler beim Laden der Datei {json_file}: {e}")
+        
+        return instance_counts
+
     def __getitem__(self, idx):
         # Load image and mask
         img_path = self.imgs[idx]
@@ -174,6 +182,146 @@ class BuildingSegmentationDataset(torch.utils.data.Dataset):
             img = self.transforms(img)
 
         return img, target
+    # def __init__(self, root, transforms=None):
+    #     self.root = root
+    #     self.transforms = transforms
+
+    #     # Liste aller Sequenzen abrufen
+    #     self.sequences = sorted(os.listdir(root))
+    #     self.imgs = []
+    #     self.masks = []
+
+    #     print("Lade Sequenzen...")
+    #     # Durch alle Sequenzen iterieren und Bilder/Masks sammeln
+    #     for seq in tqdm(self.sequences, desc="Fortschritt", unit="seq"):
+    #         seq_path = os.path.join(root, seq)
+    #         img_file = os.path.join(seq_path, "step0.camera.png")
+    #         mask_file = os.path.join(seq_path, "step0.camera.semantic segmentation.png")
+    #         if os.path.exists(img_file) and os.path.exists(mask_file):
+    #             self.imgs.append(img_file)
+    #             self.masks.append(mask_file)
+
+    # # def __getitem__(self, idx):
+    # #     # Load image and mask
+    # #     img_path = self.imgs[idx]
+    # #     mask_path = self.masks[idx]
+    # #     img = Image.open(img_path).convert("RGB")
+    # #     mask = Image.open(mask_path).convert("RGBA")
+
+    # #     # Convert mask to class IDs
+    # #     mask_np = np.array(mask)
+    # #     instance_mask = np.zeros(mask_np.shape[:2], dtype=np.int64)
+    # #     for color, class_id in COLOR_TO_ID.items():
+    # #         instance_mask[np.all(mask_np == np.array(color), axis=-1)] = class_id
+
+    # #     # Get unique class IDs and generate binary masks
+    # #     obj_ids = np.unique(instance_mask)
+    # #     obj_ids = obj_ids[obj_ids > 0]  # Exclude background (0)
+    # #     if len(obj_ids) == 0:
+    # #         # Keine Objekte, setze ein leeres Bounding-Box und Labels
+    # #         boxes = torch.zeros((0, 4), dtype=torch.float32)
+    # #         labels = torch.zeros(0, dtype=torch.int64)
+    # #         masks = torch.zeros((0, instance_mask.shape[0], instance_mask.shape[1]), dtype=torch.uint8)
+    # #     else:
+    # #         # Normale Verarbeitung
+    # #         masks = instance_mask == obj_ids[:, None, None]
+    # #         boxes = []
+    # #         for i in range(len(obj_ids)):
+    # #             pos = np.where(masks[i])
+    # #             xmin = np.min(pos[1])
+    # #             xmax = np.max(pos[1])
+    # #             ymin = np.min(pos[0])
+    # #             ymax = np.max(pos[0])
+    # #             boxes.append([xmin, ymin, xmax, ymax])
+    # #         boxes = torch.as_tensor(boxes, dtype=torch.float32)
+    # #         labels = torch.as_tensor(obj_ids, dtype=torch.int64)
+    # #         masks = torch.as_tensor(masks, dtype=torch.uint8)
+
+    # #     image_id = torch.tensor([idx])
+    # #     if len(boxes) > 0:
+    # #         area = (boxes[:, 3] - boxes[:, 1]) * (boxes[:, 2] - boxes[:, 0])
+    # #     else:
+    # #         area = torch.tensor([0.0])  # Falls keine Boxen existieren, setze area auf 0
+    # #     iscrowd = torch.zeros((len(obj_ids),), dtype=torch.int64)
+
+    # #     target = {
+    # #         "boxes": boxes,
+    # #         "labels": labels,
+    # #         "masks": masks,
+    # #         "image_id": image_id,
+    # #         "area": area,
+    # #         "iscrowd": iscrowd,
+    # #     }
+
+    # #     if self.transforms is not None:
+    # #         img = self.transforms(img)
+
+    # #     return img, target
+    # def __getitem__(self, idx):
+    #     # Load image and mask
+    #     img_path = self.imgs[idx]
+    #     mask_path = self.masks[idx]
+    #     img = Image.open(img_path).convert("RGB")
+    #     mask = Image.open(mask_path).convert("RGBA")
+
+    #     # Convert mask to class IDs
+    #     mask_np = np.array(mask)
+    #     instance_mask = np.zeros(mask_np.shape[:2], dtype=np.int64)
+    #     for color, class_id in COLOR_TO_ID.items():
+    #         instance_mask[np.all(mask_np == np.array(color), axis=-1)] = class_id
+
+    #     # Get unique class IDs and generate binary masks
+    #     obj_ids = np.unique(instance_mask)
+    #     obj_ids = obj_ids[obj_ids > 0]  # Exclude background (0)
+
+    #     if len(obj_ids) == 0:
+    #         # No objects: set empty bounding boxes and labels
+    #         boxes = torch.zeros((0, 4), dtype=torch.float32)
+    #         labels = torch.zeros(0, dtype=torch.int64)
+    #         masks = torch.zeros((0, instance_mask.shape[0], instance_mask.shape[1]), dtype=torch.uint8)
+    #     else:
+    #         # Normal processing
+    #         masks = instance_mask == obj_ids[:, None, None]
+    #         boxes = []
+    #         for i in range(len(obj_ids)):
+    #             pos = np.where(masks[i])
+    #             xmin = np.min(pos[1])
+    #             xmax = np.max(pos[1])
+    #             ymin = np.min(pos[0])
+    #             ymax = np.max(pos[0])
+    #             boxes.append([xmin, ymin, xmax, ymax])
+    #         boxes = torch.as_tensor(boxes, dtype=torch.float32)
+    #         labels = torch.as_tensor(obj_ids, dtype=torch.int64)
+    #         masks = torch.as_tensor(masks, dtype=torch.uint8)
+
+    #     # Filter invalid bounding boxes
+    #     if len(boxes) > 0:
+    #         # Ensure positive height and width
+    #         valid_indices = (boxes[:, 2] > boxes[:, 0]) & (boxes[:, 3] > boxes[:, 1])
+    #         boxes = boxes[valid_indices]
+    #         labels = labels[valid_indices]
+    #         masks = masks[valid_indices]
+
+    #     image_id = torch.tensor([idx])
+    #     if len(boxes) > 0:
+    #         area = (boxes[:, 3] - boxes[:, 1]) * (boxes[:, 2] - boxes[:, 0])
+    #     else:
+    #         area = torch.tensor([0.0])  # Set area to 0 if no boxes exist
+    #     iscrowd = torch.zeros((len(labels),), dtype=torch.int64)
+
+    #     target = {
+    #         "boxes": boxes,
+    #         "labels": labels,
+    #         "masks": masks,
+    #         "image_id": image_id,
+    #         "area": area,
+    #         "iscrowd": iscrowd,
+    #     }
+
+    #     if self.transforms is not None:
+    #         img = self.transforms(img)
+
+    #     return img, target
 
     def __len__(self):
         return len(self.imgs)
