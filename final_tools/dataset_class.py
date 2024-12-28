@@ -36,14 +36,67 @@ preprocess = Compose([
 ])
 
 class ImageTitleDataset:
-    def __init__(self, root_dir, transform=None, device='cuda', filter_images = False, type="clip"):
+    # def __init__(self, root_dir, transform=None, device='cuda', filter_images = False, type="clip"):
+    #     self.image_paths = []
+    #     self.labels = []
+    #     self.original_labels = []  # Ursprüngliche String-Labels speichern
+    #     self.valid_images = []
+    #     self.invalid_images = []
+    #     self.transform = transform
+    #     self.type = type
+    #     self.device = torch.device(device if torch.cuda.is_available() else 'cpu')
+
+    #     # Store count of valid images per building
+    #     self.building_counts = Counter()
+
+    #     # Iterate over building folders
+    #     building_folders = [b for b in BUILDING_COLORS.keys() if os.path.isdir(os.path.join(root_dir, b))]
+    #     print(building_folders)
+
+    #     for building in tqdm(building_folders, desc="Processing buildings"):
+    #         color = torch.tensor(BUILDING_COLORS[building], device=self.device, dtype=torch.uint8)
+    #         building_dir = os.path.join(root_dir, building)
+    #         print(building_dir)
+    #         building_valid_images = []
+
+    #         for filename in tqdm(os.listdir(building_dir), desc=f"Filtering images in {building}", leave=False):
+    #             if filename.endswith("camera.png"):
+    #                 base_name = filename.replace(".camera.png", "")
+    #                 seg_path = os.path.join(building_dir, f"{base_name}.camera.semantic segmentation.png")
+
+    #                 if not os.path.exists(seg_path):
+    #                     continue
+
+    #                 # Check if the semantic segmentation image matches the conditions
+    #                 full_image_path = os.path.join(building_dir, filename)
+    #                 if filter_images:
+    #                     if self.is_valid_image(seg_path, color):
+    #                         building_valid_images.append(full_image_path)
+    #                         self.building_counts[building] += 1
+    #                     else:
+    #                         self.invalid_images.append(full_image_path)
+    #                 else:
+    #                     building_valid_images.append(full_image_path)
+    #                     self.building_counts[building] += 1
+
+    #         # Limit to 500 valid images per building
+    #         selected_images = building_valid_images[:500]
+    #         self.image_paths.extend(selected_images)
+    #         #self.labels.extend([building] * len(selected_images))
+    #         self.valid_images.extend(selected_images)
+    #         self.original_labels.extend([building] * len(selected_images))  # Originale Labels speichern
+    #     self.label_encoder = LabelEncoder()
+    #     #self.labels = self.label_encoder.fit_transform(self.labels)
+    #     self.original_labels.extend([building] * len(selected_images))  # Originale Labels speichern
+
+    def __init__(self, root_dir, device='cuda', model_type = "clip", transform=None, filter=False):
         self.image_paths = []
         self.labels = []
-        self.original_labels = []  # Ursprüngliche String-Labels speichern
         self.valid_images = []
         self.invalid_images = []
+        self.filter = filter
         self.transform = transform
-        self.type = type
+        self.model_type = model_type
         self.device = torch.device(device if torch.cuda.is_available() else 'cpu')
 
         # Store count of valid images per building
@@ -51,12 +104,11 @@ class ImageTitleDataset:
 
         # Iterate over building folders
         building_folders = [b for b in BUILDING_COLORS.keys() if os.path.isdir(os.path.join(root_dir, b))]
-        print(building_folders)
 
         for building in tqdm(building_folders, desc="Processing buildings"):
             color = torch.tensor(BUILDING_COLORS[building], device=self.device, dtype=torch.uint8)
             building_dir = os.path.join(root_dir, building)
-            print(building_dir)
+
             building_valid_images = []
 
             for filename in tqdm(os.listdir(building_dir), desc=f"Filtering images in {building}", leave=False):
@@ -69,7 +121,7 @@ class ImageTitleDataset:
 
                     # Check if the semantic segmentation image matches the conditions
                     full_image_path = os.path.join(building_dir, filename)
-                    if filter_images:
+                    if self.filter:
                         if self.is_valid_image(seg_path, color):
                             building_valid_images.append(full_image_path)
                             self.building_counts[building] += 1
@@ -79,15 +131,12 @@ class ImageTitleDataset:
                         building_valid_images.append(full_image_path)
                         self.building_counts[building] += 1
 
+
             # Limit to 500 valid images per building
             selected_images = building_valid_images[:500]
             self.image_paths.extend(selected_images)
-            #self.labels.extend([building] * len(selected_images))
+            self.labels.extend([building] * len(selected_images))
             self.valid_images.extend(selected_images)
-            self.original_labels.extend([building] * len(selected_images))  # Originale Labels speichern
-        self.label_encoder = LabelEncoder()
-        #self.labels = self.label_encoder.fit_transform(self.labels)
-        self.original_labels.extend([building] * len(selected_images))  # Originale Labels speichern
 
     def is_valid_image(self, seg_path, target_color):
         """Check if the segmentation image is valid for the target building."""
@@ -105,17 +154,18 @@ class ImageTitleDataset:
         return True
 
     def __len__(self):
-        if(self.type == "clip"):
-            return len(self.original_labels)
-        else:
-            return len(self.labels)
+        # if(self.model_type == "clip"):
+        #     return len(self.original_labels)
+        # else:
+        #     return len(self.labels)
+        return len(self.labels)
 
     def __getitem__(self, idx):
-        if self.type == "clip":
+        if self.model_type == "clip":
             image = preprocess(Image.open(self.image_paths[idx]).convert("RGB"))
-            #label = clip.tokenize(self.labels[idx])[0]  # Tokenize the label
-            label = clip.tokenize(self.original_labels[idx])[0]  # Originale Labels tokenisieren
-        elif self.type == "resnet":
+            label = clip.tokenize(self.labels[idx])[0]  # Tokenize the label
+            #label = clip.tokenize(self.original_labels[idx])[0]  # Originale Labels tokenisieren
+        elif self.model_type == "resnet":
             img_path = self.image_paths[idx]
             image = Image.open(img_path).convert("RGB")
             label = self.labels[idx]

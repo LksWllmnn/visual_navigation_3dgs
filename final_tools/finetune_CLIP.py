@@ -15,13 +15,12 @@ device = "cuda:0" if torch.cuda.is_available() else "cpu"
 model.to(device)
 
 # Dataset erstellen
-#root_dir = r"F:\Studium\Master\Thesis\data\perception\usefull_data\finetune_data\building_surround_pictures"
-root_dir = r"F:\Studium\Master\Thesis\data\perception\usefull_data\finetune_data\building_big_surround_pictures"
-dataset = ImageTitleDataset(root_dir, transform=preprocess, device=device)
-train_dataloader = DataLoader(dataset, batch_size=20, shuffle=True)
+root_dir = r"F:\Studium\Master\Thesis\data\perception\usefull_data\finetune_data\building_surround_pictures"
+#root_dir = r"F:\Studium\Master\Thesis\data\perception\usefull_data\finetune_data\building_big_surround_pictures"
+dataset = ImageTitleDataset(root_dir, transform=preprocess, device=device, filter=False)
+train_dataloader = DataLoader(dataset, batch_size=10, shuffle=True)
 
 # Optimizer und Loss-Funktionen
-optimizer = torch.optim.AdamW(model.parameters(), lr=1e-6)
 loss_img = nn.CrossEntropyLoss()
 loss_txt = nn.CrossEntropyLoss()
 
@@ -34,8 +33,8 @@ print(dataset.__len__())
 train_dataset, val_dataset = torch.utils.data.random_split(dataset, [train_len, val_len])
 
 # DataLoader für Trainings- und Validierungsdaten
-train_dataloader = DataLoader(train_dataset, batch_size=10, shuffle=True)
-val_dataloader = DataLoader(val_dataset, batch_size=10, shuffle=False)
+train_dataloader = DataLoader(train_dataset, batch_size=5, shuffle=True)
+val_dataloader = DataLoader(val_dataset, batch_size=5, shuffle=False)
 
 # Funktion zur Berechnung der Genauigkeit
 def calculate_accuracy(logits, labels):
@@ -48,8 +47,16 @@ def calculate_accuracy(logits, labels):
     preds = torch.argmax(logits, dim=1)
     return (preds == labels).float().mean().item()
 
-# Training und Validierung
-num_epochs = 2
+# Prepare the optimizer
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-5,betas=(0.9,0.98),eps=1e-5,weight_decay=0.2) # the lr is smaller, more safe for fine tuning to new dataset
+
+
+# Specify the loss function
+loss_img = nn.CrossEntropyLoss()
+loss_txt = nn.CrossEntropyLoss()
+
+# # Training und Validierung
+num_epochs = 30
 for epoch in range(num_epochs):
     # Training
     model.train()
@@ -63,7 +70,8 @@ for epoch in range(num_epochs):
         texts = texts.to(device)
 
         # Forward pass
-        logits_per_image, logits_per_text = model(images, texts)
+        output = model(images, texts)
+        logits_per_image, logits_per_text = output[0], output[1]
 
         # Loss berechnen
         ground_truth = torch.arange(len(images), dtype=torch.long, device=device)
@@ -93,7 +101,8 @@ for epoch in range(num_epochs):
             texts = texts.to(device)
 
             # Forward pass
-            logits_per_image, logits_per_text = model(images, texts)
+            outputs = model(images, texts)
+            logits_per_image, logits_per_text = outputs[0], outputs[1]
 
             # Loss berechnen
             ground_truth = torch.arange(len(images), dtype=torch.long, device=device)
