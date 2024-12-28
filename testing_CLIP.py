@@ -92,7 +92,7 @@ def main():
 
     # Modell laden
     # model.load_state_dict(torch.load("best_2.pt", map_location=device))
-    model.load_state_dict(torch.load("best_tall_1.pt", map_location=device))
+    model.load_state_dict(torch.load("clip_tall_20b_1e6lr_40e_wholeScene.pth", map_location=device))
     model.to(device)
 
     # Modellinformationen ausgeben
@@ -100,7 +100,7 @@ def main():
 
     # Die Bildklassen und Templates für die Zeroshot-Klassifikation
     imagenet_classes = ["A-Building", "B-Building", "C-Building", "E-Building", "F-Building", "G-Building", 
-                        "H-Building", "I-Building", "J-Building", "L-Building", "M-Building", "N-Building", 
+                        "H-Building", "I-Building", "L-Building", "M-Building", "N-Building", 
                         "O-Building", "R-Building", "Z-Building"]
 
     imagenet_templates = ["{}"]  # Dein Template-Array für die Klassifikationen
