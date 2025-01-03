@@ -211,8 +211,28 @@ import matplotlib.pyplot as plt
 from torchvision.utils import draw_bounding_boxes, draw_segmentation_masks
 from PIL import Image
 import torch
-from chatgpt_finetune_MaskRCNN import get_model_instance_segmentation, get_transform
+import torchvision
 from torchvision.transforms import v2 as T
+from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
+from torchvision.models.detection.mask_rcnn import MaskRCNNPredictor
+
+# Define transformations
+def get_transform(train):
+    transforms = []
+    transforms.append(T.ToTensor())
+    #if train:
+        #transforms.append(T.RandomHorizontalFlip(0.5))
+    return T.Compose(transforms)
+
+# Load the pre-trained Mask R-CNN model
+def get_model_instance_segmentation(num_classes):
+    model = torchvision.models.detection.maskrcnn_resnet50_fpn(pretrained=True)
+    in_features = model.roi_heads.box_predictor.cls_score.in_features
+    model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
+    in_features_mask = model.roi_heads.mask_predictor.conv5_mask.in_channels
+    hidden_layer = 256
+    model.roi_heads.mask_predictor = MaskRCNNPredictor(in_features_mask, hidden_layer, num_classes)
+    return model
 
 # IDs zu Gebäudenamen zuordnen
 ID_TO_NAME = {
@@ -258,7 +278,10 @@ device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cp
 # Modell initialisieren
 num_classes = len(ID_TO_NAME)
 model = get_model_instance_segmentation(num_classes)
-model.load_state_dict(torch.load("chkpts\\best_m-RCNN_model_6_inScene15000.pth", map_location=device))
+#model.load_state_dict(torch.load("chkpts\\best_m-RCNN_model_6_inScene15000.pth", map_location=device))
+#model.load_state_dict(torch.load(r"F:\Studium\Master\Thesis\chkpts\MRCNN-Models\scene_mrcnn_model.pth", map_location=device))
+#model.load_state_dict(torch.load(r"F:\Studium\Master\Thesis\chkpts\MRCNN-Models\surround_mrcnn_model.pth", map_location=device))
+model.load_state_dict(torch.load(r"F:\Studium\Master\Thesis\chkpts\MRCNN-Models\big-surround_mrcnn_model.pth", map_location=device))
 model.to(device)
 model.eval()
 
@@ -330,7 +353,9 @@ def analyze_and_save_images(input_folder, output_folder, confidence_threshold=0.
         print(f"Saved analyzed image to {output_path}")
 
 # Beispielverwendung
-input_folder = "D:\\Thesis\\data\\gsplat_vid_images"  # Pfad zum Eingabeordner
-output_folder = "D:\\Thesis\\data\\M-RCNN_analyzed_2"  # Pfad zum Ausgabeverzeichnis
+input_folder = r"F:\Studium\Master\Thesis\data\perception\usefull_data\lerf-lite-data\renders\output\test-pics-controll"  # Pfad zum Eingabeordner
+#output_folder = r"F:\Studium\Master\Thesis\data\final_final_results\scene_mrcnn"  # Pfad zum Ausgabeverzeichnis
+#output_folder= r"F:\Studium\Master\Thesis\data\final_final_results\surround_mrcnn"
+output_folder= r"F:\Studium\Master\Thesis\data\final_final_results\big-surround_mrcnn"
 analyze_and_save_images(input_folder, output_folder)
 

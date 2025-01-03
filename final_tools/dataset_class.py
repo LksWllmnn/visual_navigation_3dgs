@@ -27,6 +27,25 @@ BUILDING_COLORS = {
     "Z-Building": (18, 178, 0, 255),
 }
 
+COLOR_TO_ID = {
+    (0, 0, 0, 255): 0,  # Background
+    (0, 0, 255, 255): 1,    # A-Building
+    (0, 255, 0, 255): 2,    # B-Building
+    (255, 0, 0, 255): 3,    # C-Building
+    (255, 255, 255, 255): 4,  # E-Building
+    (255, 235, 4, 255): 5,  # F-Building
+    (128, 128, 128, 255): 6,  # G-Building
+    (255, 32, 98, 255): 7,  # H-Building
+    (255, 25, 171, 255): 8,  # I-Building
+    (255, 73, 101, 255): 9,  # L-Building
+    (145, 255, 114, 255): 10,  # M-Building
+    (93, 71, 255, 255): 11,  # N-Building
+    (153, 168, 255, 255): 12,  # O-Building
+    (64, 0, 75, 255): 13,  # R-Building
+    (18, 178, 0, 255): 14,  # Z-Building
+    #(255, 169, 0, 255): 15,  # Other
+}
+
 BACKGROUND_COLOR = (0, 0, 0, 255)
 
 # Preprocessing for images
@@ -36,67 +55,13 @@ preprocess = Compose([
 ])
 
 class ImageTitleDataset:
-    # def __init__(self, root_dir, transform=None, device='cuda', filter_images = False, type="clip"):
-    #     self.image_paths = []
-    #     self.labels = []
-    #     self.original_labels = []  # Ursprüngliche String-Labels speichern
-    #     self.valid_images = []
-    #     self.invalid_images = []
-    #     self.transform = transform
-    #     self.type = type
-    #     self.device = torch.device(device if torch.cuda.is_available() else 'cpu')
-
-    #     # Store count of valid images per building
-    #     self.building_counts = Counter()
-
-    #     # Iterate over building folders
-    #     building_folders = [b for b in BUILDING_COLORS.keys() if os.path.isdir(os.path.join(root_dir, b))]
-    #     print(building_folders)
-
-    #     for building in tqdm(building_folders, desc="Processing buildings"):
-    #         color = torch.tensor(BUILDING_COLORS[building], device=self.device, dtype=torch.uint8)
-    #         building_dir = os.path.join(root_dir, building)
-    #         print(building_dir)
-    #         building_valid_images = []
-
-    #         for filename in tqdm(os.listdir(building_dir), desc=f"Filtering images in {building}", leave=False):
-    #             if filename.endswith("camera.png"):
-    #                 base_name = filename.replace(".camera.png", "")
-    #                 seg_path = os.path.join(building_dir, f"{base_name}.camera.semantic segmentation.png")
-
-    #                 if not os.path.exists(seg_path):
-    #                     continue
-
-    #                 # Check if the semantic segmentation image matches the conditions
-    #                 full_image_path = os.path.join(building_dir, filename)
-    #                 if filter_images:
-    #                     if self.is_valid_image(seg_path, color):
-    #                         building_valid_images.append(full_image_path)
-    #                         self.building_counts[building] += 1
-    #                     else:
-    #                         self.invalid_images.append(full_image_path)
-    #                 else:
-    #                     building_valid_images.append(full_image_path)
-    #                     self.building_counts[building] += 1
-
-    #         # Limit to 500 valid images per building
-    #         selected_images = building_valid_images[:500]
-    #         self.image_paths.extend(selected_images)
-    #         #self.labels.extend([building] * len(selected_images))
-    #         self.valid_images.extend(selected_images)
-    #         self.original_labels.extend([building] * len(selected_images))  # Originale Labels speichern
-    #     self.label_encoder = LabelEncoder()
-    #     #self.labels = self.label_encoder.fit_transform(self.labels)
-    #     self.original_labels.extend([building] * len(selected_images))  # Originale Labels speichern
-
-    def __init__(self, root_dir, device='cuda', model_type = "clip", transform=None, filter=False):
+    def __init__(self, root_dir, device='cuda', transform=None, filter=False):
         self.image_paths = []
         self.labels = []
         self.valid_images = []
         self.invalid_images = []
         self.filter = filter
         self.transform = transform
-        self.model_type = model_type
         self.device = torch.device(device if torch.cuda.is_available() else 'cpu')
 
         # Store count of valid images per building
@@ -154,24 +119,235 @@ class ImageTitleDataset:
         return True
 
     def __len__(self):
-        # if(self.model_type == "clip"):
-        #     return len(self.original_labels)
-        # else:
-        #     return len(self.labels)
         return len(self.labels)
 
     def __getitem__(self, idx):
-        if self.model_type == "clip":
-            image = preprocess(Image.open(self.image_paths[idx]).convert("RGB"))
-            label = clip.tokenize(self.labels[idx])[0]  # Tokenize the label
-            #label = clip.tokenize(self.original_labels[idx])[0]  # Originale Labels tokenisieren
-        elif self.model_type == "resnet":
-            img_path = self.image_paths[idx]
-            image = Image.open(img_path).convert("RGB")
-            label = self.labels[idx]
+        image = preprocess(Image.open(self.image_paths[idx]).convert("RGB"))
+        label = clip.tokenize(self.labels[idx])[0]  # Tokenize the label
+        return image, label
+    
+class ImageTitleDatasetMRCNN:
+    def __init__(self, root_dir, transforms=None,device='cuda', filter=False, num_images_per_building=500):
+        self.image_paths = []
+        self.mask_paths = []
+        self.labels = []
+        self.masks = []
+        self.imgs = []
+        self.invalid_images = []
+        self.filter = filter
+        self.transforms = transforms
+        self.num_images_per_building = num_images_per_building
+        self.device = torch.device(device if torch.cuda.is_available() else 'cpu')
 
-            if self.transform:
-                image = self.transform(image)
+        # Store count of valid images per building
+        self.building_counts = Counter()
+
+        # Iterate over building folders
+        building_folders = [b for b in BUILDING_COLORS.keys() if os.path.isdir(os.path.join(root_dir, b))]
+
+        for building in tqdm(building_folders, desc="Processing buildings"):
+            color = torch.tensor(BUILDING_COLORS[building], device=self.device, dtype=torch.uint8)
+            building_dir = os.path.join(root_dir, building)
+
+            building_valid_images = []
+            building_valid_masks = []
+
+            for filename in tqdm(os.listdir(building_dir), desc=f"Filtering images in {building}", leave=False):
+                if filename.endswith("camera.png"):
+                    base_name = filename.replace(".camera.png", "")
+                    seg_path = os.path.join(building_dir, f"{base_name}.camera.semantic segmentation.png")
+
+                    if os.path.exists(seg_path):
+                        full_image_path = os.path.join(building_dir, filename)
+                        if self.filter:
+                            if self.is_valid_image(seg_path, color):
+                                #self.imgs.append(full_image_path)
+                                #self.masks.append(seg_path)
+                                building_valid_images.append(full_image_path)
+                                building_valid_masks.append(seg_path)
+                                self.building_counts[building] += 1
+                            else:
+                                self.invalid_images.append(full_image_path)
+                        else:
+                            # self.imgs.append(full_image_path)
+                            # self.masks.append(seg_path)
+                            building_valid_images.append(full_image_path)
+                            building_valid_masks.append(seg_path)
+                            self.building_counts[building] += 1
+                    else:
+                        self.invalid_images.append(os.path.join(building_dir, filename))
+
+            # Limit to num_images_per_building valid images per building
+            self.imgs.extend(building_valid_images[:self.num_images_per_building])
+            self.masks.extend(building_valid_masks[:self.num_images_per_building])
+
+        num_valid_images = min(len(self.imgs), len(self.masks))
+        selected_indices = list(range(num_valid_images))[:self.num_images_per_building]
+        print(f"Building: {building}, Total images: {len(self.imgs)}, Total masks: {len(self.masks)}")
+        if len(self.imgs) != len(self.masks):
+            print(f"Warning: Mismatch detected for building {building}")
+
+        selected_images = [self.imgs[i] for i in selected_indices]
+        selected_masks = [self.masks[i] for i in selected_indices]
+
+        self.image_paths.extend(selected_images)
+        self.mask_paths.extend(selected_masks)
+        self.labels.extend([building] * len(selected_images))
+        
+
+    def is_valid_image(self, seg_path, target_color):
+        """Check if the segmentation image is valid for the target building."""
+        seg_image = Image.open(seg_path).convert("RGBA")
+        seg_array = torch.tensor(np.array(seg_image), device=self.device, dtype=torch.uint8)
+
+        # Count pixel occurrences, excluding the background color
+        unique, counts = torch.unique(seg_array.view(-1, 4), dim=0, return_counts=True)
+        color_counts = {tuple(color.tolist()): count.item() for color, count in zip(unique, counts) if tuple(color.tolist()) != BACKGROUND_COLOR}
+
+        # Exclude if target color is not present
+        if tuple(target_color.tolist()) not in color_counts:
+            return False
+
+        return True
+
+    def __len__(self):
+        return len(self.imgs)
+
+    #     return img, target
+    def __getitem__(self, idx):
+        # Load image and mask
+        img_path = self.imgs[idx]
+        mask_path = self.masks[idx]
+        img = Image.open(img_path).convert("RGB")
+        mask = Image.open(mask_path).convert("RGB")
+
+        # Convert mask to class IDs
+        mask_np = np.array(mask)
+        instance_mask = np.zeros(mask_np.shape[:2], dtype=np.int64)
+        for color, class_id in COLOR_TO_ID.items():
+            # Debugging: Shape überprüfen
+            #print(f"mask_np shape: {mask_np.shape}, color: {color}")
+
+            # RGB-Kanäle extrahieren, falls nötig
+            if mask_np.shape[-1] == 4:  # Wenn die Maske RGBA ist
+                mask_np = mask_np[:, :, :3]
+
+            # Sicherstellen, dass `color` und `mask_np` kompatibel sind
+            color = np.array(color[:3])  # Nur RGB nutzen, falls nötig
+
+            # Zuweisung basierend auf der Farbe
+            instance_mask[np.all(mask_np == color, axis=-1)] = class_id
+
+        # Get unique class IDs and generate binary masks
+        obj_ids = np.unique(instance_mask)
+        obj_ids = obj_ids[obj_ids > 0]  # Exclude background (0)
+
+        if len(obj_ids) == 0:
+            # No objects: set empty bounding boxes and labels
+            boxes = torch.zeros((0, 4), dtype=torch.float32)
+            labels = torch.zeros(0, dtype=torch.int64)
+            masks = torch.zeros((0, instance_mask.shape[0], instance_mask.shape[1]), dtype=torch.uint8)
+        else:
+            # Normal processing
+            masks = instance_mask == obj_ids[:, None, None]
+            boxes = []
+            for i in range(len(obj_ids)):
+                pos = np.where(masks[i])
+                xmin = np.min(pos[1])
+                xmax = np.max(pos[1])
+                ymin = np.min(pos[0])
+                ymax = np.max(pos[0])
+                boxes.append([xmin, ymin, xmax, ymax])
+            boxes = torch.as_tensor(boxes, dtype=torch.float32)
+            labels = torch.as_tensor(obj_ids, dtype=torch.int64)
+            masks = torch.as_tensor(masks, dtype=torch.uint8)
+
+        # Filter invalid bounding boxes
+        if len(boxes) > 0:
+            # Ensure positive height and width
+            valid_indices = (boxes[:, 2] > boxes[:, 0]) & (boxes[:, 3] > boxes[:, 1])
+            boxes = boxes[valid_indices]
+            labels = labels[valid_indices]
+            masks = masks[valid_indices]
+
+        image_id = torch.tensor([idx])
+        if len(boxes) > 0:
+            area = (boxes[:, 3] - boxes[:, 1]) * (boxes[:, 2] - boxes[:, 0])
+        else:
+            area = torch.tensor([0.0])  # Set area to 0 if no boxes exist
+        iscrowd = torch.zeros((len(labels),), dtype=torch.int64)
+
+        target = {
+            "boxes": boxes,
+            "labels": labels,
+            "masks": masks,
+            "image_id": image_id,
+            "area": area,
+            "iscrowd": iscrowd,
+        }
+
+        if self.transforms is not None:
+            img = self.transforms(img)
+
+        return img, target
+
+
+class ImageTitleDatasetResNet():
+    def __init__(self, root_dir, transforms=None, device='cuda', filter=False, num_images_per_building=500):
+        self.image_paths = []
+        self.labels = []
+        self.invalid_images = []
+        self.filter = filter
+        self.transforms = transforms
+        self.num_images_per_building = num_images_per_building
+        self.device = torch.device(device if torch.cuda.is_available() else 'cpu')
+        self.building_counts = Counter()
+
+        building_folders = [b for b in BUILDING_COLORS.keys() if os.path.isdir(os.path.join(root_dir, b))]
+
+        for building in tqdm(building_folders, desc="Processing buildings"):
+            color = torch.tensor(BUILDING_COLORS[building], device=self.device, dtype=torch.uint8)
+            building_dir = os.path.join(root_dir, building)
+
+            for filename in tqdm(os.listdir(building_dir), desc=f"Filtering images in {building}", leave=False):
+                if filename.endswith("camera.png"):
+                    base_name = filename.replace(".camera.png", "")
+                    seg_path = os.path.join(building_dir, f"{base_name}.camera.semantic segmentation.png")
+                    full_image_path = os.path.join(building_dir, filename)
+
+                    if os.path.exists(seg_path) and (not self.filter or self.is_valid_image(seg_path, color)):
+                        if self.building_counts[building] < self.num_images_per_building:
+                            self.image_paths.append(full_image_path)
+                            self.labels.append(building)
+                            self.building_counts[building] += 1
+                    elif self.filter:
+                        self.invalid_images.append(full_image_path)
+        self.label_encoder = LabelEncoder()
+        self.labels = self.label_encoder.fit_transform(self.labels)
+
+    def is_valid_image(self, seg_path, target_color):
+        seg_image = Image.open(seg_path).convert("RGBA")
+        seg_array = torch.tensor(np.array(seg_image), device=self.device, dtype=torch.uint8)
+        unique, counts = torch.unique(seg_array.view(-1, 4), dim=0, return_counts=True)
+        color_counts = {tuple(color.tolist()): count.item() for color, count in zip(unique, counts) 
+                        if tuple(color.tolist()) != BACKGROUND_COLOR}
+        return tuple(target_color.tolist()) in color_counts
+
+    def __len__(self):
+        return len(self.image_paths)
+
+    def __getitem__(self, idx):
+        image_path = self.image_paths[idx]
+        label = self.labels[idx]
+
+        image = Image.open(image_path).convert("RGB")
+        
+        # Konvertiere das Bild in einen Tensor, falls keine Transformation definiert ist
+        if self.transforms:
+            image = self.transforms(image)
+        else:
+            image = ToTensor()(image)
+
         return image, label
 
 if __name__ == "__main__":

@@ -121,9 +121,10 @@ processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch16")
 model, preprocess = clip.load("ViT-B/16", device=device, jit=False)
 
 #image_path = r"F:\Studium\Master\Thesis\data\perception\usefull_data\finetune_data\building_surround_pictures"
-#image_path = r"D:\Thesis\data\finetune_data\scene_building_pictures"
-image_path = r"D:\Thesis\data\finetune_data\building_surround_pictures"
-dataset = ImageTitleDataset(root_dir=image_path)
+#image_path = r"F:\Studium\Master\Thesis\data\perception\usefull_data\finetune_data\scene_building_pictures"
+image_path = r"F:\Studium\Master\Thesis\data\perception\usefull_data\finetune_data\building_big_surround_pictures"
+#image_path = r"D:\Thesis\data\finetune_data\building_surround_pictures"
+dataset = ImageTitleDataset(root_dir=image_path, filter = True)
 
 train_size = int(0.8 * len(dataset))
 val_size = len(dataset) - train_size

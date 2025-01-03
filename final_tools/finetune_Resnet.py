@@ -7,7 +7,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, random_split
 from torchvision import transforms, models
-from dataset_class import ImageTitleDataset
+from dataset_class import ImageTitleDatasetResNet
 
 from tqdm import tqdm
 
@@ -124,41 +124,29 @@ def train_model(model, dataloaders, dataset_sizes, criterion, optimizer, device,
     plt.legend()
 
     plt.tight_layout()
-    plt.show()
+    loss_plot_path = os.path.join("plots/", "big-surround_resnet_loss_per_epoch.png")
+    plt.savefig(loss_plot_path)
+    plt.close()
 
     return model
 
 
 def main():
     # Dataset Pfad anpassen
-    image_path = "C:/Users/Lukas/AppData/LocalLow/DefaultCompany/Fuwa_HDRP/singleBuildings_ResnetSam"  # Hier den Pfad zur Wurzel der Ordnerstruktur angeben
+    #image_path = r"F:\Studium\Master\Thesis\data\perception\usefull_data\finetune_data\building_surround_pictures"
+    #image_path = r"F:\Studium\Master\Thesis\data\perception\usefull_data\finetune_data\scene_building_pictures"
+    image_path = r"F:\Studium\Master\Thesis\data\perception\usefull_data\finetune_data\building_big_surround_pictures"
 
     # Gerät festlegen
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # Transformationen definieren
-    data_transforms = {
-        'train': transforms.Compose([
-            transforms.Resize((224, 224)),
-            transforms.RandomHorizontalFlip(),
-            transforms.RandomRotation(10),
-            transforms.ToTensor(),
-        ]),
-        'val': transforms.Compose([
-            transforms.Resize((224, 224)),
-            transforms.ToTensor(),
-        ]),
-    }
-
     # Dataset erstellen
-    dataset = ImageTitleDataset(root_dir=image_path, transform=data_transforms["train"], type="resnet")
+    dataset = ImageTitleDatasetResNet(root_dir=image_path, filter=True)
 
     # Dataset aufteilen
     train_size = int(0.8 * len(dataset))
     val_size = len(dataset) - train_size
     train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
-    train_dataset.dataset.transform = data_transforms['train']
-    val_dataset.dataset.transform = data_transforms['val']
 
     # Dataloader erstellen
     dataloaders = {
@@ -197,7 +185,7 @@ def main():
     )
 
     # Modell speichern
-    torch.save(model_ft.state_dict(), "resnet50_finetuned.pth")
+    torch.save(model_ft.state_dict(), "big-surround_resnet50_model.pth")
 
 if __name__ == "__main__":
     main()

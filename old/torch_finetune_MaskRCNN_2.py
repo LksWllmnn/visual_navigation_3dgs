@@ -9,6 +9,7 @@ from torchvision.transforms import v2 as T
 from tqdm import tqdm
 from chatgpt_finetune_MaskRCNN import BuildingSegmentationDataset, get_transform, evaluate_with_iou, COLOR_TO_ID  # Annahme: Ihre Klasse ist in dieser Datei
 from torch.utils.data import ConcatDataset
+from final_tools.dataset_class import ImageTitleDatasetMRCNN, BUILDING_COLORS
 
 # Modellanpassung
 def get_model_instance_segmentation(num_classes):
@@ -71,13 +72,15 @@ if __name__ == "__main__":
     # # Training und Evaluierung
     # num_epochs = 2
     # best_mean_iou = 0.0
-    use_data_limit = True  # Setze dies auf False, um das Limit zu deaktivieren
+    use_data_limit = False  # Setze dies auf False, um das Limit zu deaktivieren
 
-    root_dir2 = "C:\\Users\\Lukas\\AppData\\LocalLow\\DefaultCompany\\Fuwa_HDRP\\usefull_data\\solo_2"
+    #root_dir2 = "C:\\Users\\Lukas\\AppData\\LocalLow\\DefaultCompany\\Fuwa_HDRP\\usefull_data\\solo_2"
+    root_dir = r"F:\Studium\Master\Thesis\data\perception\usefull_data\finetune_data\building_surround_pictures"
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
     # Datensätze laden
-    dataset2 = BuildingSegmentationDataset(root=root_dir2, transforms=get_transform(train=True))
+    #dataset2 = BuildingSegmentationDataset(root=root_dir2, transforms=get_transform(train=True))
+    dataset2 = ImageTitleDatasetMRCNN(root_dir=root_dir, transforms=get_transform(True))
 
     # Begrenzen der Datenanzahl basierend auf dem booleschen Wert
     torch.manual_seed(1)
