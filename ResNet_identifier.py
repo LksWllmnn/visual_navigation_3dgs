@@ -9,7 +9,6 @@ from segment_anything import sam_model_registry, SamAutomaticMaskGenerator
 
 os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
 
-
 def save_anns(anns, image, output_path, mask_color=[255, 0, 0], transparency=90):
     """Speichert die annotierten Masken im Bild."""
     if len(anns) == 0:
@@ -27,6 +26,14 @@ def save_anns(anns, image, output_path, mask_color=[255, 0, 0], transparency=90)
     image_rgb = cv2.cvtColor(image_with_mask, cv2.COLOR_RGBA2RGB)
     cv2.imwrite(output_path, cv2.cvtColor(image_rgb, cv2.COLOR_RGB2BGR))
 
+def save_mask_only(anns, image_shape, output_path):
+    """Speichert nur die Masken als schwarzes Bild mit weißen Bereichen."""
+    mask_image = np.zeros(image_shape[:2], dtype=np.uint8)
+    if len(anns) > 0:
+        for ann in anns:
+            mask_image[ann['segmentation']] = 255
+
+    cv2.imwrite(output_path, mask_image)
 
 def classify_images(model, label_mapping, images, target_classes, confidence_threshold=10):
     """Klassifiziert Bilder und filtert Masken basierend auf den Zielklassen."""
@@ -68,7 +75,6 @@ def classify_images(model, label_mapping, images, target_classes, confidence_thr
 
     return valid_images_by_class, valid_mask_indices_by_class
 
-
 def process_image(image_path, output_folder_base, mask_generator, model, label_mapping, target_classes, confidence_threshold):
     """Verarbeitet ein einzelnes Bild."""
     image = cv2.imread(image_path)
@@ -91,24 +97,30 @@ def process_image(image_path, output_folder_base, mask_generator, model, label_m
     )
 
     for target_class in target_classes:
-        output_folder = os.path.join(output_folder_base, f"{target_class}_", f"{confidence_threshold}")
-        os.makedirs(output_folder, exist_ok=True)
-        output_path = os.path.join(output_folder, os.path.basename(image_path).replace(".jpg", "_m.jpg"))
+        qualitativ_folder = os.path.join(output_folder_base, "qualitativ", f"{target_class}")
+        mask_only_folder = os.path.join(output_folder_base, "just-mask", f"{target_class}")
+        os.makedirs(qualitativ_folder, exist_ok=True)
+        os.makedirs(mask_only_folder, exist_ok=True)
+
+        combined_output_path = os.path.join(qualitativ_folder, os.path.basename(image_path).replace(".jpg", "_m.jpg"))
+        mask_only_output_path = os.path.join(mask_only_folder, os.path.basename(image_path).replace(".jpg", ".jpg"))
 
         valid_images = valid_images_by_class[target_class]
         valid_mask_indices = valid_mask_indices_by_class[target_class]
 
         if valid_images:
             valid_masks = [masks[i] for i in valid_mask_indices]
-            save_anns(valid_masks, image, output_path)
-            print(f"Saved marked image for '{target_class}' to {output_path}")
+            save_anns(valid_masks, image, combined_output_path)
+            save_mask_only(valid_masks, image.shape, mask_only_output_path)
+            print(f"Saved marked image for '{target_class}' to {combined_output_path}")
+            print(f"Saved mask-only image for '{target_class}' to {mask_only_output_path}")
         else:
-            cv2.imwrite(output_path, cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
+            save_mask_only([], image.shape, mask_only_output_path)
+            cv2.imwrite(combined_output_path, cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
             print(f"No valid masks for class '{target_class}' in image: {image_path}")
 
     del masks, mask_images, valid_images_by_class, valid_mask_indices_by_class
     torch.cuda.empty_cache()
-
 
 def process_folder(image_folder, output_folder_base, mask_generator, model, label_mapping, target_classes, confidence_threshold=10):
     """Verarbeitet einen gesamten Ordner."""
@@ -116,7 +128,6 @@ def process_folder(image_folder, output_folder_base, mask_generator, model, labe
 
     for image_path in image_paths:
         process_image(image_path, output_folder_base, mask_generator, model, label_mapping, target_classes, confidence_threshold)
-
 
 # Initialisierung des Modells und Maskengenerators
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -136,7 +147,7 @@ mask_generator = SamAutomaticMaskGenerator(
 model = models.resnet50(pretrained=False)
 num_classes = 14
 model.fc = torch.nn.Linear(model.fc.in_features, num_classes)
-model.load_state_dict(torch.load(r"F:\Studium\Master\Thesis\chkpts\Resnet-Models\big-surround_resnet50_model.pth", map_location=device, weights_only=True))
+model.load_state_dict(torch.load(r"F:\\Studium\\Master\\Thesis\\chkpts\\Resnet-Models\\scene_resnet50_model.pth", map_location=device, weights_only=True))
 model.to(device)
 model.eval()
 
@@ -147,8 +158,8 @@ label_mapping = {
 }
 
 if __name__ == "__main__":
-    image_folder = r"F:\Studium\Master\Thesis\data\perception\usefull_data\lerf-lite-data\renders\output\test-pics-controll"
-    output_folder_base = r"F:\Studium\Master\Thesis\data\final_final_results\resnet_big-surround"
+    image_folder = r"F:\\Studium\\Master\\Thesis\\data\\perception\\usefull_data\\lerf-lite-data\\renders\\output\\test-pics-controll"
+    output_folder_base = r"F:\\Studium\\Master\\Thesis\\data\\final_final_results\\resnet_scene"
     target_classes = ["A-Building", 
                       "B-Building",
                       "C-Building",
