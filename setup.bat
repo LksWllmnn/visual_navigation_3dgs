@@ -11,3 +11,5 @@ pip install git+https://github.com/facebookresearch/segment-anything.git
 .venv/Scripts/activate
 pip install opencv-python matplotlib 
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+pip install pandas
+pip install seaborn

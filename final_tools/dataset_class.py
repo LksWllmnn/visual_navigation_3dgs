@@ -352,7 +352,7 @@ class ImageTitleDatasetResNet():
 
 if __name__ == "__main__":
     root_directory = r"F:\Studium\Master\Thesis\data\perception\usefull_data\finetune_data\building_big_surround_pictures"  # Replace with your root directory
-    dataset = ImageTitleDataset(root_dir=root_directory, filter_images=True)
+    dataset = ImageTitleDataset(root_dir=root_directory, filter=False)
 
     # Print dataset statistics
     print("Dataset statistics:")

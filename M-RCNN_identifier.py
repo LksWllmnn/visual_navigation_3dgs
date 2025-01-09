@@ -72,8 +72,8 @@ num_classes = len(ID_TO_NAME)
 model = get_model_instance_segmentation(num_classes)
 #model.load_state_dict(torch.load("chkpts\\best_m-RCNN_model_6_inScene15000.pth", map_location=device))
 #model.load_state_dict(torch.load(r"F:\Studium\Master\Thesis\chkpts\MRCNN-Models\scene_mrcnn_model.pth", map_location=device))
-#model.load_state_dict(torch.load(r"F:\Studium\Master\Thesis\chkpts\MRCNN-Models\surround_mrcnn_model.pth", map_location=device))
-model.load_state_dict(torch.load(r"F:\Studium\Master\Thesis\chkpts\MRCNN-Models\big-surround_mrcnn_model.pth", map_location=device))
+model.load_state_dict(torch.load(r"F:\Studium\Master\Thesis\chkpts\MRCNN-Models\surround_mrcnn_model.pth", map_location=device))
+#model.load_state_dict(torch.load(r"F:\Studium\Master\Thesis\chkpts\MRCNN-Models\big-surround_mrcnn_model.pth", map_location=device))
 model.to(device)
 model.eval()
 
@@ -82,10 +82,19 @@ eval_transform = get_transform(train=False)
 
 def analyze_and_save_images(input_folder, output_folder, confidence_threshold=0.5):
     """
-    Analysiert alle Bilder in einem Ordner und speichert die Ergebnisse im angegebenen Ausgabeverzeichnis.
+    Analysiert alle Bilder in einem Ordner und speichert die Ergebnisse in den angegebenen Ausgabeverzeichnissen.
     """
-    # Erstelle den Ausgabeordner, falls er nicht existiert
-    os.makedirs(output_folder, exist_ok=True)
+    # Ordnerstruktur erstellen
+    combined_folder = os.path.join(output_folder, "combined")
+    qualitative_folder = os.path.join(output_folder, "qualitative")
+    just_mask_folder = os.path.join(output_folder, "just-mask")
+    os.makedirs(combined_folder, exist_ok=True)
+    os.makedirs(qualitative_folder, exist_ok=True)
+    os.makedirs(just_mask_folder, exist_ok=True)
+    for class_name in ID_TO_NAME.values():
+        if class_name != "Background":
+            os.makedirs(os.path.join(qualitative_folder, class_name), exist_ok=True)
+            os.makedirs(os.path.join(just_mask_folder, class_name), exist_ok=True)
 
     # Liste aller Bilder im Eingabeordner
     image_files = [
@@ -96,9 +105,6 @@ def analyze_and_save_images(input_folder, output_folder, confidence_threshold=0.
     # Analysiere jedes Bild
     for image_file in image_files:
         image_path = os.path.join(input_folder, image_file)
-        output_path = os.path.join(output_folder, image_file)
-
-        # Bild laden und vorbereiten
         image = Image.open(image_path).convert("RGB")
         image_tensor = eval_transform(image).to(device).unsqueeze(0)
 
@@ -116,38 +122,57 @@ def analyze_and_save_images(input_folder, output_folder, confidence_threshold=0.
         boxes = pred["boxes"]
         masks = (pred["masks"] > confidence_threshold).squeeze(1)
 
-        # Indizes der Bounding Boxes filtern basierend auf Confidence-Wahrscheinlichkeit
+        # Spezifische Farben für Masken basierend auf Gebäudenamen
+        mask_colors = [ID_TO_COLOR[label.item()] for label in labels]
+
+        # COMBINED OUTPUT
         valid_indices = [
-            i for i, (label, score) in enumerate(zip(labels, scores)) 
-            if label.item() != 15 and score >= confidence_threshold
+            i for i, score in enumerate(scores) if score >= confidence_threshold
         ]
         filtered_boxes = boxes[valid_indices]
         filtered_labels = labels[valid_indices]
-        filtered_scores = scores[valid_indices]
         filtered_masks = masks[valid_indices]
 
-        # Spezifische Farben für Masken basierend auf Gebäudenamen
-        mask_colors = [ID_TO_COLOR[label.item()] for label in filtered_labels]
-
-        # Gebäudenamen als Labels vorbereiten
         pred_labels = [
             f"{ID_TO_NAME[label.item()]}: {score:.3f}"
-            for label, score in zip(filtered_labels, filtered_scores)
+            for label, score in zip(filtered_labels, scores[valid_indices])
         ]
 
-        # Masken und Bounding Boxes auf das Bild zeichnen
-        output_image = draw_segmentation_masks(image_display, filtered_masks, alpha=0.5, colors=mask_colors)
-        output_image = draw_bounding_boxes(output_image, filtered_boxes.long(), labels=pred_labels, colors="red")
+        combined_image = draw_segmentation_masks(image_display, filtered_masks, alpha=0.5, colors=mask_colors)
+        combined_image = draw_bounding_boxes(combined_image, filtered_boxes.long(), labels=pred_labels, colors="red")
+        combined_output_path = os.path.join(combined_folder, image_file)
+        combined_image = combined_image.permute(1, 2, 0).cpu().numpy()
+        plt.imsave(combined_output_path, combined_image)
 
-        # Speichern des Ergebnisses
-        output_image = output_image.permute(1, 2, 0).cpu().numpy()
-        plt.imsave(output_path, output_image)
-        print(f"Saved analyzed image to {output_path}")
+        # QUALITATIVE AND JUST-MASK OUTPUTS
+        for class_id, class_name in ID_TO_NAME.items():
+            if class_name == "Background":
+                continue
+
+            # Filter für die aktuelle Klasse
+            class_indices = [i for i, label in enumerate(labels) if label.item() == class_id and scores[i] >= confidence_threshold]
+            class_masks = masks[class_indices]
+            
+
+            # Qualitative Output: RGB + Maske
+            qualitative_image = draw_segmentation_masks(image_display.clone(), class_masks, alpha=0.5, colors=ID_TO_COLOR[class_id])
+            qualitative_output_path = os.path.join(qualitative_folder, class_name, image_file)
+            qualitative_image = qualitative_image.permute(1, 2, 0).cpu().numpy()
+            plt.imsave(qualitative_output_path, qualitative_image)
+
+            # Just-Mask Output: Schwarzer Hintergrund + Maske
+            black_background = torch.zeros_like(image_display)
+            just_mask_image = draw_segmentation_masks(black_background, class_masks, alpha=1.0, colors=ID_TO_COLOR[class_id])
+            just_mask_output_path = os.path.join(just_mask_folder, class_name, image_file)
+            just_mask_image = just_mask_image.permute(1, 2, 0).cpu().numpy()
+            plt.imsave(just_mask_output_path, just_mask_image)
+
+        print(f"Processed and saved outputs for {image_file}")
 
 # Beispielverwendung
 input_folder = r"F:\Studium\Master\Thesis\data\perception\usefull_data\lerf-lite-data\renders\output\test-pics-controll"  # Pfad zum Eingabeordner
 #output_folder = r"F:\Studium\Master\Thesis\data\final_final_results\scene_mrcnn"  # Pfad zum Ausgabeverzeichnis
-#output_folder= r"F:\Studium\Master\Thesis\data\final_final_results\surround_mrcnn"
-output_folder= r"F:\Studium\Master\Thesis\data\final_final_results\big-surround_mrcnn"
+output_folder= r"F:\Studium\Master\Thesis\data\final_final_results\surround_mrcnn"
+#output_folder= r"F:\Studium\Master\Thesis\data\final_final_results\big-surround_mrcnn"
 analyze_and_save_images(input_folder, output_folder)
 

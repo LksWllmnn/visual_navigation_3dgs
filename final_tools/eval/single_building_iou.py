@@ -110,6 +110,16 @@ gt_dir = Path(r"F:\Studium\Master\Thesis\data\perception\usefull_data\test_data\
 # output_log = Path(r"F:\Studium\Master\Thesis\data\perception\usefull_data\lerf-lite-data\renders\no-finetuning\just-mask\output_log.txt")
 
 # resnet stuff
-pred_dir = Path(r"F:\Studium\Master\Thesis\data\final_final_results\resnet_scene\just-mask")
-output_log = Path(r"F:\Studium\Master\Thesis\data\final_final_results\resnet_scene\just-mask\output_log.csv")
+# pred_dir = Path(r"F:\Studium\Master\Thesis\data\final_final_results\resnet_scene\just-mask")
+# output_log = Path(r"F:\Studium\Master\Thesis\data\final_final_results\resnet_scene\just-mask\output_log.csv")
+
+# Mask-RCNN stuff
+pred_dir = Path(r"F:\Studium\Master\Thesis\data\final_final_results\mrcnn_scene\just-mask")
+output_log = Path(r"F:\Studium\Master\Thesis\data\final_final_results\mrcnn_scene\just-mask\output_log.csv")
+process_directory(gt_dir=gt_dir, pred_dir=pred_dir, output_log=output_log, mapping=mapping)
+pred_dir = Path(r"F:\Studium\Master\Thesis\data\final_final_results\mrcnn_surround\just-mask")
+output_log = Path(r"F:\Studium\Master\Thesis\data\final_final_results\mrcnn_surround\just-mask\output_log.csv")
+process_directory(gt_dir=gt_dir, pred_dir=pred_dir, output_log=output_log, mapping=mapping)
+pred_dir = Path(r"F:\Studium\Master\Thesis\data\final_final_results\mrcnn_big-surround\just-mask")
+output_log = Path(r"F:\Studium\Master\Thesis\data\final_final_results\mrcnn_big-surround\just-mask\output_log.csv")
 process_directory(gt_dir=gt_dir, pred_dir=pred_dir, output_log=output_log, mapping=mapping)
