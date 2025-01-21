@@ -1,3 +1,5 @@
+# based on https://github.com/shashnkvats/Indofashionclip/blob/main/indofashion_clip.py 14.01.2025
+
 from tqdm import tqdm
 import os
 import torch

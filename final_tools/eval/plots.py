@@ -3,10 +3,11 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 # Liste mit Dateinamen resnet
-# file_paths = [
-#     r"F:\Studium\Master\Thesis\data\final_final_results\resnet_big-surround\just-mask\output_log.csv",      #big-surround
-#     r"F:\Studium\Master\Thesis\data\final_final_results\resnet_scene\just-mask\output_log.csv",             #scene 
-#     r"F:\Studium\Master\Thesis\data\final_final_results\resnet_surround\just-mask\output_log.csv"]          #surround
+file_paths = [
+    r"F:\Studium\Master\Thesis\data\final_final_results\resnet_big-surround\just-mask\output_log.csv",
+    r"F:\Studium\Master\Thesis\data\final_final_results\resnet_big-surround\just-mask\output_log.csv",      #big-surround
+    r"F:\Studium\Master\Thesis\data\final_final_results\resnet_scene\just-mask\output_log.csv",             #scene 
+    r"F:\Studium\Master\Thesis\data\final_final_results\resnet_surround\just-mask\output_log.csv"]          #surround
 
 # # lerf lite
 # file_paths = [
@@ -16,10 +17,11 @@ import seaborn as sns
 #     r"F:\Studium\Master\Thesis\data\perception\usefull_data\lerf-lite-data\renders\surround\just-mask\output_log.csv"]          #surround
 
 # Mask R-CNN
-file_paths = [
-    r"F:\Studium\Master\Thesis\data\final_final_results\mrcnn_big-surround\just-mask\output_log.csv",      #big-surround
-    r"F:\Studium\Master\Thesis\data\final_final_results\mrcnn_scene\just-mask\output_log.csv",             #scene 
-    r"F:\Studium\Master\Thesis\data\final_final_results\mrcnn_surround\just-mask\output_log.csv"]          #surround
+# file_paths = [
+#     r"F:\Studium\Master\Thesis\data\final_final_results\mrcnn_no-finetuning\just-mask\output_log.csv",
+#     r"F:\Studium\Master\Thesis\data\final_final_results\mrcnn_big-surround\just-mask\output_log.csv",      #big-surround
+#     r"F:\Studium\Master\Thesis\data\final_final_results\mrcnn_scene\just-mask\output_log.csv",             #scene 
+#     r"F:\Studium\Master\Thesis\data\final_final_results\mrcnn_surround\just-mask\output_log.csv"]          #surround
 
 dataframes = [pd.read_csv(file, sep=",") for file in file_paths]
 fig, ax = plt.subplots(1, len(dataframes), figsize=(20, 6), sharey=True)
@@ -45,21 +47,21 @@ for i, df in enumerate(dataframes):
         # Boxplot erstellen
         sns.boxplot(y=df_filtered[" IoU"], ax=ax[i])
 
-        # if i == 0:
-        #     ax[i].set_title(f"No Finetuning (Mean: {mean: .5f}, Count: {count}, Median: {median: .5f})")
-        # if i == 1:
-        #     ax[i].set_title(f"Big-Surround (Mean: {mean: .5f}, Count: {count}, Median: {median: .5f})")
-        # if i == 2:
-        #     ax[i].set_title(f"Scene (Mean: {mean: .5f}, Count: {count}, Median: {median: .5f})")
-        # if i == 3:
-        #     ax[i].set_title(f"Surround (Mean: {mean: .5f}, Count: {count}, Median: {median: .5f})")
-        
         if i == 0:
-            ax[i].set_title(f"Big-Surround (Mean: {mean: .5f}, Count: {count}, Median: {median: .5f})")
+            ax[i].set_title(f"No Finetuning (Mean: {mean: .5f}, Count: {count}, Median: {median: .5f})")
         if i == 1:
-            ax[i].set_title(f"Scene (Mean: {mean: .5f}, Count: {count}, Median: {median: .5f})")
+            ax[i].set_title(f"Big-Surround (Mean: {mean: .5f}, Count: {count}, Median: {median: .5f})")
         if i == 2:
+            ax[i].set_title(f"Scene (Mean: {mean: .5f}, Count: {count}, Median: {median: .5f})")
+        if i == 3:
             ax[i].set_title(f"Surround (Mean: {mean: .5f}, Count: {count}, Median: {median: .5f})")
+        
+        # if i == 0:
+        #     ax[i].set_title(f"Big-Surround (Mean: {mean: .5f}, Count: {count}, Median: {median: .5f})")
+        # if i == 1:
+        #     ax[i].set_title(f"Scene (Mean: {mean: .5f}, Count: {count}, Median: {median: .5f})")
+        # if i == 2:
+        #     ax[i].set_title(f"Surround (Mean: {mean: .5f}, Count: {count}, Median: {median: .5f})")
         
         ax[i].set_ylabel("IoU" if i == 0 else "")
         ax[i].set_xlabel("Boxplot")
@@ -81,20 +83,20 @@ for i, df in enumerate(dataframes):
     counts = counts.reindex(categories, fill_value=0)
 
     # Benennen der Serie nach der Datei
-    # if i == 0:
-    #     counts.name = "No-Finetuning"
-    # elif i == 1:
-    #     counts.name = "Big-Surround"
-    # elif i == 2:
-    #     counts.name = "Scene"
-    # elif i == 3:
-    #     counts.name = "Surround"
     if i == 0:
-        counts.name = "Big-Surround"
+        counts.name = "No-Finetuning"
     elif i == 1:
-        counts.name = "Scene"
+        counts.name = "Big-Surround"
     elif i == 2:
+        counts.name = "Scene"
+    elif i == 3:
         counts.name = "Surround"
+    # if i == 0:
+    #     counts.name = "Big-Surround"
+    # elif i == 1:
+    #     counts.name = "Scene"
+    # elif i == 2:
+    #     counts.name = "Surround"
 
     # Füge die gezählten Werte zur Liste hinzu
     category_counts.append(counts)

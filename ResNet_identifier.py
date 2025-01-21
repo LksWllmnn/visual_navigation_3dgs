@@ -38,7 +38,12 @@ def save_mask_only(anns, image_shape, output_path):
 def classify_images(model, label_mapping, images, target_classes, confidence_threshold=10):
     """Klassifiziert Bilder und filtert Masken basierend auf den Zielklassen."""
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    preprocess = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor()])
+    #preprocess = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor()])
+    preprocess = transforms.Compose([
+                    transforms.Resize(224),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+                ])
 
     batch_size = 8  # An GPU-Speicher anpassen
     valid_images_by_class = {target: [] for target in target_classes}
@@ -147,7 +152,8 @@ mask_generator = SamAutomaticMaskGenerator(
 model = models.resnet50(pretrained=False)
 num_classes = 14
 model.fc = torch.nn.Linear(model.fc.in_features, num_classes)
-model.load_state_dict(torch.load(r"F:\\Studium\\Master\\Thesis\\chkpts\\Resnet-Models\\scene_resnet50_model.pth", map_location=device, weights_only=True))
+#model.load_state_dict(torch.load(r"F:\\Studium\\Master\\Thesis\\chkpts\\Resnet-Models\\scene_resnet50_model.pth", map_location=device, weights_only=True))
+model.load_state_dict(torch.load(r"D:\Thesis\visual_navigation_3dgs\big-surround_t-test_resnet50_model.pth", map_location=device, weights_only=True))
 model.to(device)
 model.eval()
 
@@ -159,7 +165,7 @@ label_mapping = {
 
 if __name__ == "__main__":
     image_folder = r"F:\\Studium\\Master\\Thesis\\data\\perception\\usefull_data\\lerf-lite-data\\renders\\output\\test-pics-controll"
-    output_folder_base = r"F:\\Studium\\Master\\Thesis\\data\\final_final_results\\resnet_scene"
+    output_folder_base = r"F:\\Studium\\Master\\Thesis\\data\\final_final_results\\resnet_big-surround-t-test"
     target_classes = ["A-Building", 
                       "B-Building",
                       "C-Building",

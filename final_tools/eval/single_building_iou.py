@@ -1,3 +1,5 @@
+# based on https://github.com/minghanqin/LangSplat/blob/main/eval/evaluate_iou_loc.py 14.01.2025
+
 import cv2
 import numpy as np
 from pathlib import Path
@@ -58,6 +60,7 @@ def process_directory(gt_dir, pred_dir, output_log, mapping):
     gt_dir = Path(gt_dir)
     pred_dir = Path(pred_dir)
     output_log = Path(output_log)
+    print("nearly-done")
 
     # Erstellen des Logs
     with output_log.open("w") as log_file:
@@ -112,14 +115,23 @@ gt_dir = Path(r"F:\Studium\Master\Thesis\data\perception\usefull_data\test_data\
 # resnet stuff
 # pred_dir = Path(r"F:\Studium\Master\Thesis\data\final_final_results\resnet_scene\just-mask")
 # output_log = Path(r"F:\Studium\Master\Thesis\data\final_final_results\resnet_scene\just-mask\output_log.csv")
+# pred_dir = Path(r"F:\Studium\Master\Thesis\data\final_final_results\resnet_no-finetuning\just-mask")
+# output_log = Path(r"F:\Studium\Master\Thesis\data\final_final_results\resnet_no-finetuning\just-mask\output_log.csv")
+# process_directory(gt_dir=gt_dir, pred_dir=pred_dir, output_log=output_log, mapping=mapping)
+pred_dir = Path(r"F:\Studium\Master\Thesis\data\final_final_results\resnet_big-surround-t-test\just-mask")
+output_log = Path(r"F:\Studium\Master\Thesis\data\final_final_results\resnet_big-surround-t-test\just-mask\output_log.csv")
+process_directory(gt_dir=gt_dir, pred_dir=pred_dir, output_log=output_log, mapping=mapping)
 
 # Mask-RCNN stuff
-pred_dir = Path(r"F:\Studium\Master\Thesis\data\final_final_results\mrcnn_scene\just-mask")
-output_log = Path(r"F:\Studium\Master\Thesis\data\final_final_results\mrcnn_scene\just-mask\output_log.csv")
-process_directory(gt_dir=gt_dir, pred_dir=pred_dir, output_log=output_log, mapping=mapping)
-pred_dir = Path(r"F:\Studium\Master\Thesis\data\final_final_results\mrcnn_surround\just-mask")
-output_log = Path(r"F:\Studium\Master\Thesis\data\final_final_results\mrcnn_surround\just-mask\output_log.csv")
-process_directory(gt_dir=gt_dir, pred_dir=pred_dir, output_log=output_log, mapping=mapping)
-pred_dir = Path(r"F:\Studium\Master\Thesis\data\final_final_results\mrcnn_big-surround\just-mask")
-output_log = Path(r"F:\Studium\Master\Thesis\data\final_final_results\mrcnn_big-surround\just-mask\output_log.csv")
-process_directory(gt_dir=gt_dir, pred_dir=pred_dir, output_log=output_log, mapping=mapping)
+# pred_dir = Path(r"F:\Studium\Master\Thesis\data\final_final_results\mrcnn_scene\just-mask")
+# output_log = Path(r"F:\Studium\Master\Thesis\data\final_final_results\mrcnn_scene\just-mask\output_log.csv")
+# process_directory(gt_dir=gt_dir, pred_dir=pred_dir, output_log=output_log, mapping=mapping)
+# pred_dir = Path(r"F:\Studium\Master\Thesis\data\final_final_results\mrcnn_surround\just-mask")
+# output_log = Path(r"F:\Studium\Master\Thesis\data\final_final_results\mrcnn_surround\just-mask\output_log.csv")
+# process_directory(gt_dir=gt_dir, pred_dir=pred_dir, output_log=output_log, mapping=mapping)
+# pred_dir = Path(r"F:\Studium\Master\Thesis\data\final_final_results\mrcnn_big-surround\just-mask")
+# output_log = Path(r"F:\Studium\Master\Thesis\data\final_final_results\mrcnn_big-surround\just-mask\output_log.csv")
+# process_directory(gt_dir=gt_dir, pred_dir=pred_dir, output_log=output_log, mapping=mapping)
+# pred_dir = Path(r"F:\Studium\Master\Thesis\data\final_final_results\mrcnn_no-finetuning\just-mask")
+# output_log = Path(r"F:\Studium\Master\Thesis\data\final_final_results\mrcnn_no-finetuning\just-mask\output_log.csv")
+# process_directory(gt_dir=gt_dir, pred_dir=pred_dir, output_log=output_log, mapping=mapping)

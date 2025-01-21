@@ -1,3 +1,5 @@
+# based on https://pytorch.org/tutorials/intermediate/torchvision_tutorial.html 14.01.2025
+
 import os
 import matplotlib.pyplot as plt
 from torchvision.utils import draw_bounding_boxes, draw_segmentation_masks
@@ -72,7 +74,7 @@ num_classes = len(ID_TO_NAME)
 model = get_model_instance_segmentation(num_classes)
 #model.load_state_dict(torch.load("chkpts\\best_m-RCNN_model_6_inScene15000.pth", map_location=device))
 #model.load_state_dict(torch.load(r"F:\Studium\Master\Thesis\chkpts\MRCNN-Models\scene_mrcnn_model.pth", map_location=device))
-model.load_state_dict(torch.load(r"F:\Studium\Master\Thesis\chkpts\MRCNN-Models\surround_mrcnn_model.pth", map_location=device))
+#model.load_state_dict(torch.load(r"F:\Studium\Master\Thesis\chkpts\MRCNN-Models\surround_mrcnn_model.pth", map_location=device))
 #model.load_state_dict(torch.load(r"F:\Studium\Master\Thesis\chkpts\MRCNN-Models\big-surround_mrcnn_model.pth", map_location=device))
 model.to(device)
 model.eval()
@@ -172,7 +174,8 @@ def analyze_and_save_images(input_folder, output_folder, confidence_threshold=0.
 # Beispielverwendung
 input_folder = r"F:\Studium\Master\Thesis\data\perception\usefull_data\lerf-lite-data\renders\output\test-pics-controll"  # Pfad zum Eingabeordner
 #output_folder = r"F:\Studium\Master\Thesis\data\final_final_results\scene_mrcnn"  # Pfad zum Ausgabeverzeichnis
-output_folder= r"F:\Studium\Master\Thesis\data\final_final_results\surround_mrcnn"
+#output_folder= r"F:\Studium\Master\Thesis\data\final_final_results\surround_mrcnn"
 #output_folder= r"F:\Studium\Master\Thesis\data\final_final_results\big-surround_mrcnn"
+output_folder= r"F:\Studium\Master\Thesis\data\final_final_results\no-finetuning_mrcnn"
 analyze_and_save_images(input_folder, output_folder)
 

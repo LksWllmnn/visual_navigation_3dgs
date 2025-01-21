@@ -1,3 +1,5 @@
+#based on https://pytorch.org/tutorials/intermediate/torchvision_tutorial.html 14.01.2025
+
 import torch
 import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader

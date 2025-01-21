@@ -140,8 +140,14 @@ def main():
     # Gerät festlegen
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+    transform = transforms.Compose([
+                    transforms.Resize(224),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+                ])
+
     # Dataset erstellen
-    dataset = ImageTitleDatasetResNet(root_dir=image_path, filter=True)
+    dataset = ImageTitleDatasetResNet(root_dir=image_path, transforms=transform, filter=True)
 
     # Dataset aufteilen
     train_size = int(0.8 * len(dataset))
@@ -185,7 +191,7 @@ def main():
     )
 
     # Modell speichern
-    torch.save(model_ft.state_dict(), "big-surround_resnet50_model.pth")
+    torch.save(model_ft.state_dict(), "big-surround_t-test_resnet50_model.pth")
 
 if __name__ == "__main__":
     main()
