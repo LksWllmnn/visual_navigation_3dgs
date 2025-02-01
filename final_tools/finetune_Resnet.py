@@ -24,9 +24,9 @@ def show_images(dataloader, dataset):
     plt.tight_layout()
     plt.show()
 
-from tqdm import tqdm  # Für Fortschrittsbalken
+#from tqdm import tqdm  # Für Fortschrittsbalken
 
-def train_model(model, dataloaders, dataset_sizes, criterion, optimizer, device, num_epochs=10):
+def train_model(model, dataloaders, dataset_sizes, criterion, optimizer, device, case, num_epochs=10 ):
     since = time.time()
     best_model_wts = model.state_dict()
     best_acc = 0.0
@@ -124,19 +124,14 @@ def train_model(model, dataloaders, dataset_sizes, criterion, optimizer, device,
     plt.legend()
 
     plt.tight_layout()
-    loss_plot_path = os.path.join("plots/", "big-surround_resnet_loss_per_epoch.png")
+    loss_plot_path = os.path.join("plots/", f"{case}_resnet_loss_per_epoch.png")
     plt.savefig(loss_plot_path)
     plt.close()
 
     return model
 
 
-def main():
-    # Dataset Pfad anpassen
-    #image_path = r"F:\Studium\Master\Thesis\data\perception\usefull_data\finetune_data\building_surround_pictures"
-    #image_path = r"F:\Studium\Master\Thesis\data\perception\usefull_data\finetune_data\scene_building_pictures"
-    image_path = r"F:\Studium\Master\Thesis\data\perception\usefull_data\finetune_data\building_big_surround_pictures"
-
+def init(image_path, case):
     # Gerät festlegen
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -147,7 +142,10 @@ def main():
                 ])
 
     # Dataset erstellen
-    dataset = ImageTitleDatasetResNet(root_dir=image_path, transforms=transform, filter=True)
+    if case == "big-surround":
+        dataset = ImageTitleDatasetResNet(root_dir=image_path, transforms=transform, filter=True)
+    else:
+        dataset = ImageTitleDatasetResNet(root_dir=image_path, transforms=transform, filter=True)
 
     # Dataset aufteilen
     train_size = int(0.8 * len(dataset))
@@ -156,8 +154,8 @@ def main():
 
     # Dataloader erstellen
     dataloaders = {
-        'train': DataLoader(train_dataset, batch_size=8, shuffle=True),
-        'val': DataLoader(val_dataset, batch_size=8, shuffle=False)
+        'train': DataLoader(train_dataset, batch_size=10, shuffle=True),
+        'val': DataLoader(val_dataset, batch_size=10, shuffle=False)
     }
 
     dataset_sizes = {
@@ -166,7 +164,7 @@ def main():
     }
 
     # Beispielbilder anzeigen
-    show_images(dataloaders['train'], train_dataset.dataset)
+    #show_images(dataloaders['train'], train_dataset.dataset)
 
     # Vortrainiertes ResNet50-Modell laden
     model_ft = models.resnet50(pretrained=True)
@@ -177,7 +175,8 @@ def main():
 
     # Verlustfunktion und Optimierer definieren
     criterion = nn.CrossEntropyLoss()
-    optimizer_ft = optim.Adam(model_ft.parameters(), lr=0.001)
+    #optimizer_ft = optim.Adam(model_ft.parameters(), lr=0.001)
+    optimizer_ft = optim.Adam(model_ft.parameters(), lr=1e-6, betas=(0.9, 0.98), eps=1e-6, weight_decay=0.2)
 
     # Modell trainieren
     model_ft = train_model(
@@ -187,11 +186,23 @@ def main():
         criterion=criterion,
         optimizer=optimizer_ft,
         device=device,
-        num_epochs=15
+        num_epochs=30
     )
 
     # Modell speichern
-    torch.save(model_ft.state_dict(), "big-surround_t-test_resnet50_model.pth")
+    torch.save(model_ft.state_dict(), f"{case}_t-test_resnet50_model.pth")
+
+def main():
+    # Dataset Pfad anpassen
+    image_path_surround = r"F:\Studium\Master\Thesis\data\perception\usefull_data\finetune_data\building_surround_pictures"
+    image_path_scene = r"F:\Studium\Master\Thesis\data\perception\usefull_data\finetune_data\scene_building_pictures"
+    image_path_big_surround = r"F:\Studium\Master\Thesis\data\perception\usefull_data\finetune_data\building_big_surround_pictures"
+
+    init(image_path=image_path_surround, case="surround")
+    init(image_path=image_path_scene, case="scene")
+    init(image_path=image_path_big_surround, case="big-surround")
+
+    
 
 if __name__ == "__main__":
     main()
