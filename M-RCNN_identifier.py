@@ -66,23 +66,7 @@ ID_TO_COLOR = {
     14: "navy",      # Z-Building
 }
 
-# Modell auf Gerät laden
-device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-
-# Modell initialisieren
-num_classes = len(ID_TO_NAME)
-model = get_model_instance_segmentation(num_classes)
-#model.load_state_dict(torch.load("chkpts\\best_m-RCNN_model_6_inScene15000.pth", map_location=device))
-#model.load_state_dict(torch.load(r"F:\Studium\Master\Thesis\chkpts\MRCNN-Models\scene_mrcnn_model.pth", map_location=device))
-#model.load_state_dict(torch.load(r"F:\Studium\Master\Thesis\chkpts\MRCNN-Models\surround_mrcnn_model.pth", map_location=device))
-#model.load_state_dict(torch.load(r"F:\Studium\Master\Thesis\chkpts\MRCNN-Models\big-surround_mrcnn_model.pth", map_location=device))
-model.to(device)
-model.eval()
-
-# Transformation für Evaluation laden
-eval_transform = get_transform(train=False)
-
-def analyze_and_save_images(input_folder, output_folder, confidence_threshold=0.5):
+def analyze_and_save_images(input_folder, output_folder, model, device, eval_transform, confidence_threshold=0.5,  ):
     """
     Analysiert alle Bilder in einem Ordner und speichert die Ergebnisse in den angegebenen Ausgabeverzeichnissen.
     """
@@ -172,10 +156,49 @@ def analyze_and_save_images(input_folder, output_folder, confidence_threshold=0.
         print(f"Processed and saved outputs for {image_file}")
 
 # Beispielverwendung
-input_folder = r"F:\Studium\Master\Thesis\data\perception\usefull_data\lerf-lite-data\renders\output\test-pics-controll"  # Pfad zum Eingabeordner
+# input_folder = r"F:\Studium\Master\Thesis\data\perception\usefull_data\lerf-lite-data\renders\output\test-pics-controll"  # Pfad zum Eingabeordner
+
 #output_folder = r"F:\Studium\Master\Thesis\data\final_final_results\scene_mrcnn"  # Pfad zum Ausgabeverzeichnis
 #output_folder= r"F:\Studium\Master\Thesis\data\final_final_results\surround_mrcnn"
 #output_folder= r"F:\Studium\Master\Thesis\data\final_final_results\big-surround_mrcnn"
-output_folder= r"F:\Studium\Master\Thesis\data\final_final_results\no-finetuning_mrcnn"
-analyze_and_save_images(input_folder, output_folder)
 
+
+def init(model_path, case_name, input_folder):
+    # Modell auf Gerät laden
+    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+
+    # Modell initialisieren
+    num_classes = len(ID_TO_NAME)
+    model = get_model_instance_segmentation(num_classes)
+    if case_name != "no-finetuning":
+        model.load_state_dict(torch.load(model_path, map_location=device))
+    else:
+        print("... no finetuning")
+    #model.load_state_dict(torch.load(r"F:\Studium\Master\Thesis\chkpts\MRCNN-Models\scene_mrcnn_model.pth", map_location=device))
+    #model.load_state_dict(torch.load(r"F:\Studium\Master\Thesis\chkpts\MRCNN-Models\surround_mrcnn_model.pth", map_location=device))
+    #model.load_state_dict(torch.load(r"F:\Studium\Master\Thesis\chkpts\MRCNN-Models\big-surround_mrcnn_model.pth", map_location=device))
+    model.to(device)
+    model.eval()
+
+    # Transformation für Evaluation laden
+    eval_transform = get_transform(train=False)
+    output_folder= f"F:\\Studium\\Master\\Thesis\\data\\final_final_results\\mrcnn_{case_name}"
+    analyze_and_save_images(input_folder, output_folder, model=model, device=device, eval_transform=eval_transform)
+
+input_folder = r"F:\Studium\Master\Thesis\data\perception\usefull_data\lerf-lite-data\renders\feature-splatting\rgb"
+
+#no-finetuning
+model_path = r""
+init(model_path=model_path, case_name="no-finetuning", input_folder=input_folder)
+
+#Big-surround
+model_path = r"F:\Studium\Master\Thesis\chkpts\MRCNN-Models\big-surround_mrcnn_model.pth"
+init(model_path=model_path, case_name="big-surround", input_folder=input_folder)
+
+#scene
+model_path = r"F:\Studium\Master\Thesis\chkpts\MRCNN-Models\scene_mrcnn_model.pth"
+init(model_path=model_path, case_name="scene", input_folder=input_folder)
+
+#scene
+model_path = r"F:\Studium\Master\Thesis\chkpts\MRCNN-Models\surround_mrcnn_model.pth"
+init(model_path=model_path, case_name="surround", input_folder=input_folder)

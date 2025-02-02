@@ -22,7 +22,7 @@ def map_filename(number):
 
 # Liste mit Dateinamen resnet
 # file_paths = [
-#     r"F:\Studium\Master\Thesis\data\final_final_results\resnet_big-surround\just-mask\output_log.csv",
+#     r"F:\Studium\Master\Thesis\data\final_final_results\resnet_no-finetuning\just-mask\output_log.csv",
 #     r"F:\Studium\Master\Thesis\data\final_final_results\resnet_big-surround\just-mask\output_log.csv",      #big-surround
 #     r"F:\Studium\Master\Thesis\data\final_final_results\resnet_scene\just-mask\output_log.csv",             #scene 
 #     r"F:\Studium\Master\Thesis\data\final_final_results\resnet_surround\just-mask\output_log.csv"]          #surround
@@ -37,20 +37,20 @@ def map_filename(number):
 # tech="lerf-lite"
 
 # Mask R-CNN
-# file_paths = [
-#     r"F:\Studium\Master\Thesis\data\final_final_results\mrcnn_no-finetuning\just-mask\output_log.csv",
-#     r"F:\Studium\Master\Thesis\data\final_final_results\mrcnn_big-surround\just-mask\output_log.csv",      #big-surround
-#     r"F:\Studium\Master\Thesis\data\final_final_results\mrcnn_scene\just-mask\output_log.csv",             #scene 
-#     r"F:\Studium\Master\Thesis\data\final_final_results\mrcnn_surround\just-mask\output_log.csv"]          #surround
-# tech="mask-r-cnn"
+file_paths = [
+    r"F:\Studium\Master\Thesis\data\final_final_results\mrcnn_no-finetuning\just-mask\output_log.csv",
+    r"F:\Studium\Master\Thesis\data\final_final_results\mrcnn_big-surround\just-mask\output_log.csv",      #big-surround
+    r"F:\Studium\Master\Thesis\data\final_final_results\mrcnn_scene\just-mask\output_log.csv",             #scene 
+    r"F:\Studium\Master\Thesis\data\final_final_results\mrcnn_surround\just-mask\output_log.csv"]          #surround
+tech="mask-r-cnn"
 
 # Feature Splatting
-file_paths = [
-    r"F:\Studium\Master\Thesis\data\perception\usefull_data\lerf-lite-data\renders\feature-splatting\no-finetuning\just_mask\output_log.csv",     #no-finetuning
-    r"F:\Studium\Master\Thesis\data\perception\usefull_data\lerf-lite-data\renders\feature-splatting\big-surround\just_mask\output_log.csv",      #big-surround
-    r"F:\Studium\Master\Thesis\data\perception\usefull_data\lerf-lite-data\renders\feature-splatting\scene\just_mask\output_log.csv",             #scene 
-    r"F:\Studium\Master\Thesis\data\perception\usefull_data\lerf-lite-data\renders\feature-splatting\surround\just_mask\output_log.csv"]
-tech="feature-splatting"
+# file_paths = [
+#     r"F:\Studium\Master\Thesis\data\perception\usefull_data\lerf-lite-data\renders\feature-splatting\no-finetuning\just_mask\output_log.csv",     #no-finetuning
+#     r"F:\Studium\Master\Thesis\data\perception\usefull_data\lerf-lite-data\renders\feature-splatting\big-surround\just_mask\output_log.csv",      #big-surround
+#     r"F:\Studium\Master\Thesis\data\perception\usefull_data\lerf-lite-data\renders\feature-splatting\scene\just_mask\output_log.csv",             #scene 
+#     r"F:\Studium\Master\Thesis\data\perception\usefull_data\lerf-lite-data\renders\feature-splatting\surround\just_mask\output_log.csv"]
+# tech="feature-splatting"
 
 dataframes = [pd.read_csv(file, sep=",") for file in file_paths]
 fig, ax = plt.subplots(1, len(dataframes), figsize=(20, 6), sharey=True)

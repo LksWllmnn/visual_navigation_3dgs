@@ -134,38 +134,38 @@ def process_folder(image_folder, output_folder_base, mask_generator, model, labe
     for image_path in image_paths:
         process_image(image_path, output_folder_base, mask_generator, model, label_mapping, target_classes, confidence_threshold)
 
-# Initialisierung des Modells und Maskengenerators
-device = "cuda" if torch.cuda.is_available() else "cpu"
-sam = sam_model_registry["vit_h"](checkpoint="chkpts\\sam_vit_h_4b8939.pth")
-sam.to(device=device)
+def init(model_path, case_name, image_folder):
+    # Initialisierung des Modells und Maskengenerators
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    sam = sam_model_registry["vit_h"](checkpoint="chkpts\\sam_vit_h_4b8939.pth")
+    sam.to(device=device)
 
-mask_generator = SamAutomaticMaskGenerator(
-    model=sam,
-    points_per_side=16,
-    pred_iou_thresh=0.86,
-    stability_score_thresh=0.92,
-    crop_n_layers=1,
-    crop_n_points_downscale_factor=2,
-    min_mask_region_area=100
-)
+    mask_generator = SamAutomaticMaskGenerator(
+        model=sam,
+        points_per_side=16,
+        pred_iou_thresh=0.86,
+        stability_score_thresh=0.92,
+        crop_n_layers=1,
+        crop_n_points_downscale_factor=2,
+        min_mask_region_area=100
+    )
 
-model = models.resnet50(pretrained=False)
-num_classes = 14
-model.fc = torch.nn.Linear(model.fc.in_features, num_classes)
-#model.load_state_dict(torch.load(r"F:\\Studium\\Master\\Thesis\\chkpts\\Resnet-Models\\scene_resnet50_model.pth", map_location=device, weights_only=True))
-model.load_state_dict(torch.load(r"D:\Thesis\visual_navigation_3dgs\big-surround_t-test_resnet50_model.pth", map_location=device, weights_only=True))
-model.to(device)
-model.eval()
+    model = models.resnet50(pretrained=False)
+    num_classes = 14
+    model.fc = torch.nn.Linear(model.fc.in_features, num_classes)
+    if case_name != "no-finetuning":
+        print(case_name)
+        model.load_state_dict(torch.load(model_path, map_location=device, weights_only=True))
+    else:
+        print(f"...{case_name}")
+    model.to(device)
+    model.eval()
 
-label_mapping = {
-    0: "A-Building", 1: "B-Building", 2: "C-Building", 3: "E-Building", 4: "F-Building", 5: "G-Building",
-    6: "H-Building", 7: "I-Building", 8: "L-Building", 9: "M-Building", 10: "N-Building", 11: "O-Building",
-    12: "R-Building", 13: "Z-Building"
-}
-
-if __name__ == "__main__":
-    image_folder = r"F:\\Studium\\Master\\Thesis\\data\\perception\\usefull_data\\lerf-lite-data\\renders\\output\\test-pics-controll"
-    output_folder_base = r"F:\\Studium\\Master\\Thesis\\data\\final_final_results\\resnet_big-surround-t-test"
+    label_mapping = {
+        0: "A-Building", 1: "B-Building", 2: "C-Building", 3: "E-Building", 4: "F-Building", 5: "G-Building",
+        6: "H-Building", 7: "I-Building", 8: "L-Building", 9: "M-Building", 10: "N-Building", 11: "O-Building",
+        12: "R-Building", 13: "Z-Building"
+    }
     target_classes = ["A-Building", 
                       "B-Building",
                       "C-Building",
@@ -180,4 +180,25 @@ if __name__ == "__main__":
                       "I-Building", 
                       "R-Building", 
                       "Z-Building"]
+    output_folder_base = f"F:\\Studium\\Master\\Thesis\\data\\final_final_results\\resnet_{case_name}"
     process_folder(image_folder, output_folder_base, mask_generator, model, label_mapping, target_classes, confidence_threshold=30)
+
+
+if __name__ == "__main__":
+    image_folder = r"F:\Studium\Master\Thesis\data\perception\usefull_data\lerf-lite-data\renders\feature-splatting\rgb"
+    
+    # #big-surround
+    # model_path = r"F:\Studium\Master\Thesis\chkpts\ResNet-Models\big-surround_t-test_resnet50_model.pth"
+    # init(model_path=model_path, case_name="big-surround", image_folder=image_folder)
+
+    # #surround
+    # model_path = r"F:\Studium\Master\Thesis\chkpts\ResNet-Models\surround_t-test_resnet50_model.pth"
+    # init(model_path=model_path, case_name="surround", image_folder=image_folder)
+
+    # #scene
+    # model_path = r"F:\Studium\Master\Thesis\chkpts\ResNet-Models\scene_t-test_resnet50_model.pth"
+    # init(model_path=model_path, case_name="scene", image_folder=image_folder)
+
+    # no-finetuning
+    model_path = r""
+    init(model_path=model_path, case_name="no-finetuning", image_folder=image_folder)

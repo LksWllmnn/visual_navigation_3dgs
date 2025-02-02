@@ -145,7 +145,7 @@ def init(image_path, case):
     if case == "big-surround":
         dataset = ImageTitleDatasetResNet(root_dir=image_path, transforms=transform, filter=True)
     else:
-        dataset = ImageTitleDatasetResNet(root_dir=image_path, transforms=transform, filter=True)
+        dataset = ImageTitleDatasetResNet(root_dir=image_path, transforms=transform, filter=False)
 
     # Dataset aufteilen
     train_size = int(0.8 * len(dataset))
@@ -186,7 +186,8 @@ def init(image_path, case):
         criterion=criterion,
         optimizer=optimizer_ft,
         device=device,
-        num_epochs=30
+        case=case,
+        num_epochs=100
     )
 
     # Modell speichern
