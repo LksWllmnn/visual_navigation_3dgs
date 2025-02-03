@@ -5,9 +5,20 @@ import torch
 from torchvision import transforms, models
 import torch.nn.functional as F
 from PIL import Image
+import time
 from segment_anything import sam_model_registry, SamAutomaticMaskGenerator
 
 os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
+
+def measure_time(func):
+    """Dekorator zur Messung der Ausführungszeit einer Funktion."""
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+        print(f"{func.__name__} dauerte {end_time - start_time:.4f} Sekunden.")
+        return result
+    return wrapper
 
 def save_anns(anns, image, output_path, mask_color=[255, 0, 0], transparency=90):
     """Speichert die annotierten Masken im Bild."""
@@ -80,6 +91,11 @@ def classify_images(model, label_mapping, images, target_classes, confidence_thr
 
     return valid_images_by_class, valid_mask_indices_by_class
 
+@measure_time
+def generate_masks(mask_generator, image):
+    masks = mask_generator.generate(image)
+    return masks
+
 def process_image(image_path, output_folder_base, mask_generator, model, label_mapping, target_classes, confidence_threshold):
     """Verarbeitet ein einzelnes Bild."""
     image = cv2.imread(image_path)
@@ -88,7 +104,8 @@ def process_image(image_path, output_folder_base, mask_generator, model, label_m
         return
 
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    masks = mask_generator.generate(image)
+    
+    masks = generate_masks(mask_generator, image)
 
     mask_images = []
     for mask in masks:
@@ -134,6 +151,7 @@ def process_folder(image_folder, output_folder_base, mask_generator, model, labe
     for image_path in image_paths:
         process_image(image_path, output_folder_base, mask_generator, model, label_mapping, target_classes, confidence_threshold)
 
+@measure_time
 def init(model_path, case_name, image_folder):
     # Initialisierung des Modells und Maskengenerators
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -180,24 +198,24 @@ def init(model_path, case_name, image_folder):
                       "I-Building", 
                       "R-Building", 
                       "Z-Building"]
-    output_folder_base = f"F:\\Studium\\Master\\Thesis\\data\\final_final_results\\resnet_{case_name}"
+    output_folder_base = f"F:\\Studium\\Master\\Thesis\\data\\timetest\\resnet_{case_name}"
     process_folder(image_folder, output_folder_base, mask_generator, model, label_mapping, target_classes, confidence_threshold=30)
 
 
 if __name__ == "__main__":
     image_folder = r"F:\Studium\Master\Thesis\data\perception\usefull_data\lerf-lite-data\renders\feature-splatting\rgb"
     
-    # #big-surround
-    # model_path = r"F:\Studium\Master\Thesis\chkpts\ResNet-Models\big-surround_t-test_resnet50_model.pth"
-    # init(model_path=model_path, case_name="big-surround", image_folder=image_folder)
+    #big-surround
+    model_path = r"F:\Studium\Master\Thesis\chkpts\ResNet-Models\big-surround_t-test_resnet50_model.pth"
+    init(model_path=model_path, case_name="big-surround", image_folder=image_folder)
 
-    # #surround
-    # model_path = r"F:\Studium\Master\Thesis\chkpts\ResNet-Models\surround_t-test_resnet50_model.pth"
-    # init(model_path=model_path, case_name="surround", image_folder=image_folder)
+    #surround
+    model_path = r"F:\Studium\Master\Thesis\chkpts\ResNet-Models\surround_t-test_resnet50_model.pth"
+    init(model_path=model_path, case_name="surround", image_folder=image_folder)
 
-    # #scene
-    # model_path = r"F:\Studium\Master\Thesis\chkpts\ResNet-Models\scene_t-test_resnet50_model.pth"
-    # init(model_path=model_path, case_name="scene", image_folder=image_folder)
+    #scene
+    model_path = r"F:\Studium\Master\Thesis\chkpts\ResNet-Models\scene_t-test_resnet50_model.pth"
+    init(model_path=model_path, case_name="scene", image_folder=image_folder)
 
     # no-finetuning
     model_path = r""

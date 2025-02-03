@@ -9,6 +9,17 @@ import torchvision
 from torchvision.transforms import v2 as T
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 from torchvision.models.detection.mask_rcnn import MaskRCNNPredictor
+import time
+
+def measure_time(func):
+    """Dekorator zur Messung der Ausführungszeit einer Funktion."""
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+        print(f"{func.__name__} dauerte {end_time - start_time:.4f} Sekunden.")
+        return result
+    return wrapper
 
 # Define transformations
 def get_transform(train):
@@ -66,6 +77,7 @@ ID_TO_COLOR = {
     14: "navy",      # Z-Building
 }
 
+@measure_time
 def analyze_and_save_images(input_folder, output_folder, model, device, eval_transform, confidence_threshold=0.5,  ):
     """
     Analysiert alle Bilder in einem Ordner und speichert die Ergebnisse in den angegebenen Ausgabeverzeichnissen.
@@ -182,7 +194,7 @@ def init(model_path, case_name, input_folder):
 
     # Transformation für Evaluation laden
     eval_transform = get_transform(train=False)
-    output_folder= f"F:\\Studium\\Master\\Thesis\\data\\final_final_results\\mrcnn_{case_name}"
+    output_folder= f"F:\\Studium\\Master\\Thesis\\data\\timetest\\mrcnn_{case_name}"
     analyze_and_save_images(input_folder, output_folder, model=model, device=device, eval_transform=eval_transform)
 
 input_folder = r"F:\Studium\Master\Thesis\data\perception\usefull_data\lerf-lite-data\renders\feature-splatting\rgb"
